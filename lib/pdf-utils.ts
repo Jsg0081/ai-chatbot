@@ -1,8 +1,9 @@
-import pdf from 'pdf-parse';
-
 export async function extractTextFromPDF(url: string): Promise<string> {
   try {
     console.log('Extracting text from PDF:', url);
+    
+    // Dynamic import to avoid build-time issues
+    const pdf = (await import('pdf-parse')).default;
     
     // Fetch the PDF from the URL
     const response = await fetch(url);
