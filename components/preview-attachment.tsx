@@ -1,6 +1,7 @@
 import type { Attachment } from 'ai';
 
 import { LoaderIcon } from './icons';
+import { FileText } from 'lucide-react';
 
 export const PreviewAttachment = ({
   attachment,
@@ -24,8 +25,16 @@ export const PreviewAttachment = ({
               alt={name ?? 'An image attachment'}
               className="rounded-md size-full object-cover"
             />
+          ) : contentType === 'application/pdf' ? (
+            <div className="flex flex-col items-center justify-center text-muted-foreground">
+              <FileText className="w-6 h-6" />
+              <span className="text-xs mt-1">PDF</span>
+            </div>
           ) : (
-            <div className="" />
+            <div className="flex flex-col items-center justify-center text-muted-foreground">
+              <FileText className="w-6 h-6" />
+              <span className="text-xs mt-1">FILE</span>
+            </div>
           )
         ) : (
           <div className="" />

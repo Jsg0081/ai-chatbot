@@ -24,9 +24,10 @@ import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, X } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
+import { useVerse } from '@/lib/verse-context';
 
 function PureMultimodalInput({
   chatId,
@@ -59,6 +60,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { selectedVerses, clearVerses } = useVerse();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -112,10 +114,29 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
-    handleSubmit(undefined, {
+    // If there are selected verses, prepend the references to the message
+    let messageToSend = input;
+    if (selectedVerses.length > 0) {
+      const verseRefs = selectedVerses
+        .map(v => `[${v.book} ${v.chapter}:${v.verse}] "${v.text}"`)
+        .join('\n');
+      messageToSend = verseRefs + '\n\n' + input;
+      
+      // Debug logging
+      console.log('Selected verses:', selectedVerses);
+      console.log('Message being sent:', messageToSend);
+    }
+
+    // Use append to send the message with verses included
+    append({
+      role: 'user',
+      content: messageToSend,
       experimental_attachments: attachments,
     });
 
+    // Clear everything after submission
+    setInput('');
+    clearVerses();
     setAttachments([]);
     setLocalStorageInput('');
     resetHeight();
@@ -125,11 +146,15 @@ function PureMultimodalInput({
     }
   }, [
     attachments,
-    handleSubmit,
+    append,
     setAttachments,
     setLocalStorageInput,
     width,
     chatId,
+    input,
+    selectedVerses,
+    clearVerses,
+    setInput,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -193,6 +218,26 @@ function PureMultimodalInput({
     }
   }, [status, scrollToBottom]);
 
+  // Create a formatted string of all selected verses
+  const getFormattedVerses = () => {
+    if (selectedVerses.length === 0) return '';
+    
+    if (selectedVerses.length === 1) {
+      const v = selectedVerses[0];
+      return `${v.book} ${v.chapter}:${v.verse} - ${v.text}`;
+    }
+    
+    // For multiple verses, show abbreviated format
+    const versesText = selectedVerses
+      .map(v => `${v.book} ${v.chapter}:${v.verse}`)
+      .join(', ');
+    
+    const allText = selectedVerses.map(v => v.text).join(' ');
+    const truncatedText = allText.length > 100 ? allText.substring(0, 100) + '...' : allText;
+    
+    return `${versesText} - ${truncatedText}`;
+  };
+
   return (
     <div className="relative w-full flex flex-col gap-4">
       <AnimatePresence>
@@ -235,6 +280,7 @@ function PureMultimodalInput({
         className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
         ref={fileInputRef}
         multiple
+        accept="image/*,.pdf,application/pdf"
         onChange={handleFileChange}
         tabIndex={-1}
       />
@@ -260,6 +306,39 @@ function PureMultimodalInput({
             />
           ))}
         </div>
+      )}
+
+      {selectedVerses.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg border border-border/50"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-semibold text-muted-foreground">
+                {selectedVerses.length} verse{selectedVerses.length > 1 ? 's' : ''} selected
+              </span>
+              {selectedVerses[0]?.translation && (
+                <span className="text-xs text-muted-foreground">
+                  ({selectedVerses[0].translation})
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-foreground/80 truncate">
+              {getFormattedVerses()}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0 flex-shrink-0"
+            onClick={() => clearVerses()}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </motion.div>
       )}
 
       <Textarea

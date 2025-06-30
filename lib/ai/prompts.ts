@@ -33,7 +33,40 @@ Do not update document right after creating it. Wait for user feedback or reques
 `;
 
 export const regularPrompt =
-  'You are a friendly assistant! Keep your responses concise and helpful.';
+  'You are a friendly assistant! Keep your responses concise and helpful. When users share attachments (images or PDFs), analyze them and provide relevant insights based on their content.';
+
+export const bibleStudyPrompt = `You are a knowledgeable Bible study assistant. Your ONLY role is to help people understand and apply scripture to their lives.
+
+IMPORTANT: When you see Bible verses in the format [Book Chapter:Verse] "verse text", you MUST discuss those specific verses. 
+
+When the user includes attachments (images or PDFs):
+- Analyze the attached content in the context of Bible study
+- If it's a PDF, read and understand its contents to provide biblical insights
+- If it's an image, describe what you see and relate it to the biblical discussion
+- Integrate the attachment content naturally into your biblical analysis
+
+DO NOT talk about:
+- Creating documents or artifacts
+- Code or programming
+- Anything unrelated to Bible study
+
+INSTEAD, for each Bible verse shared:
+
+1. **Quote the Verse**: Start by acknowledging the exact scripture they shared
+2. **Historical Context**: Who wrote it? When? To whom? What was happening?
+3. **Literary Context**: What comes before and after? What type of literature is it?
+4. **Original Meaning**: What did this mean to the original audience?
+5. **Key Themes**: What are the main theological points?
+6. **Modern Application**: How does this apply to our lives today?
+7. **Related Scriptures**: What other verses connect to this theme?
+
+Your response should be:
+- Focused on Bible study and spiritual growth
+- Warm, encouraging, and educational
+- Grounded in sound biblical interpretation
+- Practical and applicable to daily life
+
+If the user asks a question with the verses, answer that specific question using the scripture as your foundation.`;
 
 export interface RequestHints {
   latitude: Geo['latitude'];
@@ -50,21 +83,35 @@ About the origin of user's request:
 - country: ${requestHints.country}
 `;
 
-export const systemPrompt = ({
-  selectedChatModel,
-  requestHints,
-}: {
-  selectedChatModel: string;
-  requestHints: RequestHints;
-}) => {
-  const requestPrompt = getRequestPromptFromHints(requestHints);
-
-  if (selectedChatModel === 'chat-model-reasoning') {
-    return `${regularPrompt}\n\n${requestPrompt}`;
-  } else {
-    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+export function systemPrompt({ 
+  selectedChatModel, 
+  requestHints, 
+  hasBibleVerses = false 
+}: { 
+  selectedChatModel: string; 
+  requestHints?: RequestHints;
+  hasBibleVerses?: boolean;
+}) {
+  const requestPrompt = requestHints ? getRequestPromptFromHints(requestHints) : '';
+  const basePrompt = hasBibleVerses ? bibleStudyPrompt : regularPrompt;
+  
+  let fullPrompt = basePrompt;
+  
+  // Add request hints if available
+  if (requestPrompt) {
+    fullPrompt += `\n\n${requestPrompt}`;
   }
-};
+  
+  // Add attachment handling instructions
+  fullPrompt += `\n\nWhen the user provides attachments (images, PDFs, or other files), analyze them carefully and incorporate their content into your response. If a PDF is attached, read and understand its content to provide relevant insights and answers based on the document.`;
+  
+  // Add artifacts prompt for non-reasoning models and non-Bible study contexts
+  if (selectedChatModel !== 'chat-model-reasoning' && !hasBibleVerses) {
+    fullPrompt += `\n\n${artifactsPrompt}`;
+  }
+  
+  return fullPrompt;
+}
 
 export const codePrompt = `
 You are a Python code generator that creates self-contained, executable code snippets. When writing code:

@@ -36,6 +36,7 @@ import { after } from 'next/server';
 import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
 import { ChatSDKError } from '@/lib/errors';
+import { extractTextFromPDF } from '@/lib/pdf-utils';
 
 export const maxDuration = 60;
 
@@ -113,11 +114,120 @@ export async function POST(request: Request) {
 
     const previousMessages = await getMessagesByChatId({ id });
 
+    // Log the incoming message with attachments
+    console.log('Message with attachments:', {
+      content: message.content,
+      attachments: message.experimental_attachments,
+      parts: message.parts,
+    });
+
+    // Ensure the message includes experimental_attachments
+    const formattedMessage = {
+      ...message,
+      experimental_attachments: message.experimental_attachments || [],
+    };
+
+    // Log what we're sending to the AI
+    if (formattedMessage.experimental_attachments.length > 0) {
+      console.log('Sending message with attachments to AI:', {
+        hasContent: !!formattedMessage.content,
+        attachmentCount: formattedMessage.experimental_attachments.length,
+        attachments: formattedMessage.experimental_attachments.map(a => ({
+          name: a.name,
+          contentType: a.contentType,
+          url: a.url.substring(0, 100) + '...',
+        })),
+      });
+    }
+
     const messages = appendClientMessage({
       // @ts-expect-error: todo add type conversion from DBMessage[] to UIMessage[]
       messages: previousMessages,
-      message,
+      message: formattedMessage,
     });
+
+    // Transform messages to handle attachments properly
+    const transformedMessages = await Promise.all(messages.map(async (msg: any) => {
+      if (msg.experimental_attachments && msg.experimental_attachments.length > 0) {
+        console.log('Transforming message with attachments:', {
+          originalContent: msg.content,
+          attachmentCount: msg.experimental_attachments.length,
+        });
+        
+        // Convert attachments to proper format for the AI model
+        const contentParts = [];
+        let extractedPdfText = '';
+        
+        // Add text content if present
+        if (msg.content) {
+          contentParts.push({
+            type: 'text',
+            text: msg.content,
+          });
+        }
+        
+        // Process attachments
+        for (const attachment of msg.experimental_attachments) {
+          console.log('Processing attachment:', {
+            name: attachment.name,
+            contentType: attachment.contentType,
+            urlPreview: attachment.url.substring(0, 100) + '...',
+          });
+          
+          if (attachment.contentType === 'application/pdf') {
+            // For PDFs, extract text and append to message
+            try {
+              const pdfText = await extractTextFromPDF(attachment.url);
+              extractedPdfText += `\n\n--- Content from ${attachment.name} ---\n${pdfText}\n--- End of ${attachment.name} ---\n`;
+              console.log('Successfully extracted PDF text, length:', pdfText.length);
+            } catch (error) {
+              console.error('Failed to extract PDF text:', error);
+              extractedPdfText += `\n\n--- Error reading ${attachment.name} ---\nCould not extract text from this PDF.\n`;
+            }
+          } else if (attachment.contentType?.startsWith('image/')) {
+            // For images, pass as image type (xAI supports images)
+            contentParts.push({
+              type: 'image',
+              image: attachment.url,
+            });
+          }
+        }
+        
+        // If we extracted PDF text, add it to the message
+        if (extractedPdfText) {
+          const textContent = msg.content ? `${msg.content}\n${extractedPdfText}` : extractedPdfText;
+          // Replace or add the text content with PDF content included
+          const textPartIndex = contentParts.findIndex(part => part.type === 'text');
+          if (textPartIndex >= 0) {
+            contentParts[textPartIndex].text = textContent;
+          } else {
+            contentParts.push({
+              type: 'text',
+              text: textContent,
+            });
+          }
+        }
+        
+        console.log('Transformed message content parts:', contentParts.length);
+        
+        // Return message with transformed content
+        // If only text content, return as string for compatibility
+        if (contentParts.length === 1 && contentParts[0].type === 'text') {
+          return {
+            ...msg,
+            content: contentParts[0].text,
+          };
+        }
+        
+        return {
+          ...msg,
+          content: contentParts,
+        };
+      }
+      
+      // Return message as-is if no attachments
+      return msg;
+    }));
 
     const { longitude, latitude, city, country } = geolocation(request);
 
@@ -144,12 +254,46 @@ export async function POST(request: Request) {
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
 
+    // Check if the message contains Bible verse references
+    const messageContent = message.content || '';
+    const messageParts = message.parts || [];
+    
+    // Get text from either content or parts
+    let messageText = messageContent;
+    if (!messageText && messageParts.length > 0) {
+      messageText = messageParts.map(part => 
+        part.type === 'text' ? part.text : ''
+      ).join(' ');
+    }
+    
+    // More robust Bible verse detection - check for multiple patterns
+    const bibleVersePatterns = [
+      /\[[A-Za-z0-9\s]+\s+\d+:\d+\]/,  // [Book Chapter:Verse]
+      /\[[\w\s]+\s+\d+:\d+\]/,         // Any word characters
+      /\[[^\]]+\d+:\d+\]/              // Any format with numbers:numbers
+    ];
+    
+    const hasBibleVerses = bibleVersePatterns.some(pattern => pattern.test(messageText));
+    
+    // Log for debugging
+    console.log('Full message object:', JSON.stringify(message, null, 2));
+    console.log('Message content:', messageContent);
+    console.log('Message parts:', messageParts);
+    console.log('Extracted message text:', messageText);
+    console.log('Has Bible verses:', hasBibleVerses);
+
     const stream = createDataStream({
       execute: (dataStream) => {
+        console.log('Calling streamText with:', {
+          model: selectedChatModel,
+          messagesCount: transformedMessages.length,
+          lastMessage: transformedMessages[transformedMessages.length - 1],
+        });
+        
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
-          messages,
+          system: systemPrompt({ selectedChatModel, requestHints, hasBibleVerses }),
+          messages: transformedMessages,
           maxSteps: 5,
           experimental_activeTools:
             selectedChatModel === 'chat-model-reasoning'

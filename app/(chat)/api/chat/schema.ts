@@ -16,9 +16,16 @@ export const postRequestBodySchema = z.object({
     experimental_attachments: z
       .array(
         z.object({
-          url: z.string().url(),
+          url: z.string(), // Allow data URLs and regular URLs
           name: z.string().min(1).max(2000),
-          contentType: z.enum(['image/png', 'image/jpg', 'image/jpeg']),
+          contentType: z.enum([
+            'image/png', 
+            'image/jpg', 
+            'image/jpeg',
+            'image/gif',
+            'image/webp',
+            'application/pdf'
+          ]),
         }),
       )
       .optional(),

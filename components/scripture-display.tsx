@@ -1,0 +1,204 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BookOpenIcon } from 'lucide-react';
+import { useVerse } from '@/lib/verse-context';
+
+interface ScriptureDisplayProps {
+  book: string;
+  chapter: number;
+}
+
+interface Verse {
+  verse: number;
+  text: string;
+}
+
+interface ScriptureData {
+  reference: string;
+  verses: Verse[];
+  text: string;
+  translation_id: string;
+  translation_name: string;
+  translation_note: string;
+}
+
+const TRANSLATIONS = [
+  { id: 'kjv', name: 'King James Version' },
+  { id: 'web', name: 'World English Bible' },
+  { id: 'bbe', name: 'Bible in Basic English' },
+  { id: 'asv', name: 'American Standard Version' },
+  { id: 'darby', name: 'Darby Translation' },
+  { id: 'ylt', name: "Young's Literal Translation" },
+];
+
+export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
+  const [scripture, setScripture] = useState<ScriptureData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [translation, setTranslation] = useState('kjv');
+  const { addVerse, isVerseSelected } = useVerse();
+
+  useEffect(() => {
+    const fetchScripture = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Using bible-api.com which is free and doesn't require authentication
+        const response = await fetch(
+          `https://bible-api.com/${encodeURIComponent(book)}+${chapter}?translation=${translation}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch scripture');
+        }
+
+        const data = await response.json();
+        setScripture(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load scripture');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchScripture();
+  }, [book, chapter, translation]);
+
+  const handleVerseClick = (verse: Verse) => {
+    addVerse({
+      book,
+      chapter,
+      verse: verse.verse,
+      text: verse.text,
+      translation: scripture?.translation_name || 'King James Version',
+    });
+  };
+
+  if (loading) {
+    return (
+      <Card className="p-6 h-full">
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-4/5" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 h-full">
+        <div className="text-center text-muted-foreground">
+          <BookOpenIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p className="font-medium">Unable to load scripture</p>
+          <p className="text-sm mt-2">{error}</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!scripture) {
+    return null;
+  }
+
+  // Group verses into paragraphs
+  // For Psalms and other poetry, use smaller groupings
+  const isPoetry = ['Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon'].includes(book);
+  const versesPerParagraph = isPoetry ? 2 : 4;
+  const paragraphs: Verse[][] = [];
+  
+  if (scripture.verses) {
+    for (let i = 0; i < scripture.verses.length; i += versesPerParagraph) {
+      paragraphs.push(scripture.verses.slice(i, i + versesPerParagraph));
+    }
+  }
+
+  return (
+    <Card className="h-full flex flex-col shadow-lg">
+      <div className="p-6 border-b bg-muted/30">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <BookOpenIcon className="w-6 h-6 mt-1 text-muted-foreground" />
+            <div>
+              <h2 className="text-2xl font-bold">{scripture.reference}</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {scripture.translation_name || 'King James Version'}
+              </p>
+            </div>
+          </div>
+          <Select value={translation} onValueChange={setTranslation}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select translation" />
+            </SelectTrigger>
+            <SelectContent>
+              {TRANSLATIONS.map((trans) => (
+                <SelectItem key={trans.id} value={trans.id}>
+                  {trans.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="flex-1 p-6 lg:p-8 overflow-auto bg-background">
+        <div className="max-w-3xl mx-auto">
+          {paragraphs.map((paragraph, index) => (
+            <p 
+              key={index} 
+              className={`mb-6 leading-relaxed text-base ${
+                isPoetry ? 'pl-4 border-l-2 border-muted' : ''
+              }`}
+            >
+              {paragraph.map((verse, verseIndex) => {
+                const isSelected = isVerseSelected(book, chapter, verse.verse);
+                return (
+                  <span 
+                    key={verse.verse}
+                    className={`
+                      group cursor-pointer rounded px-1 -mx-1 transition-all
+                      ${isSelected 
+                        ? 'bg-primary/20 hover:bg-primary/30' 
+                        : 'hover:bg-primary/10'
+                      }
+                    `}
+                    onClick={() => handleVerseClick(verse)}
+                  >
+                    <sup className={`
+                      text-xs mr-1 font-bold transition-colors
+                      ${isSelected 
+                        ? 'text-primary' 
+                        : 'text-primary group-hover:text-primary/80'
+                      }
+                    `}>
+                      {verse.verse}
+                    </sup>
+                    <span className={`
+                      transition-colors
+                      ${isSelected 
+                        ? 'text-foreground' 
+                        : 'text-foreground/90 group-hover:text-foreground'
+                      }
+                    `}>
+                      {verse.text}
+                    </span>
+                    {verseIndex < paragraph.length - 1 && ' '}
+                  </span>
+                );
+              })}
+            </p>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+} 
