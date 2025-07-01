@@ -10,6 +10,18 @@ const nextConfig: NextConfig = {
       {
         hostname: 'avatar.vercel.sh',
       },
+      {
+        hostname: 'i.scdn.co',
+      },
+      {
+        hostname: 'mosaic.scdn.co',
+      },
+      {
+        hostname: 'image-cdn-ak.spotifycdn.com',
+      },
+      {
+        hostname: 'image-cdn-fa.spotifycdn.com',
+      },
     ],
   },
 };

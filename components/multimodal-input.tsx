@@ -24,10 +24,11 @@ import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, X } from 'lucide-react';
+import { ArrowDown, X, Music } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import { useVerse } from '@/lib/verse-context';
+import { SpotifySearchModal } from './spotify-search-modal';
 
 function PureMultimodalInput({
   chatId,
@@ -61,6 +62,7 @@ function PureMultimodalInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const { selectedVerses, clearVerses } = useVerse();
+  const [showSpotifyModal, setShowSpotifyModal] = useState(false);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -330,14 +332,25 @@ function PureMultimodalInput({
               {getFormattedVerses()}
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 flex-shrink-0"
-            onClick={() => clearVerses()}
-          >
-            <X className="h-3 w-3" />
-          </Button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => setShowSpotifyModal(true)}
+              title="Search Spotify for related content"
+            >
+              <Music className="h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => clearVerses()}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
         </motion.div>
       )}
 
@@ -385,6 +398,12 @@ function PureMultimodalInput({
           />
         )}
       </div>
+      
+      <SpotifySearchModal 
+        open={showSpotifyModal}
+        onOpenChange={setShowSpotifyModal}
+        verses={selectedVerses}
+      />
     </div>
   );
 }

@@ -4,9 +4,16 @@ import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpenIcon } from 'lucide-react';
+import { BookOpenIcon, Music } from 'lucide-react';
 import { useVerse } from '@/lib/verse-context';
 import { BIBLE_BOOKS_DATA } from './bible-books';
+import { SpotifySearchModal } from './spotify-search-modal';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 interface ScriptureDisplayProps {
   book: string;
@@ -56,6 +63,13 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const [translations, setTranslations] = useState<any[]>([]);
   const [loadingTranslations, setLoadingTranslations] = useState(true);
   const { addVerse, isVerseSelected, selectedVerses } = useVerse();
+  const [showSpotifyModal, setShowSpotifyModal] = useState(false);
+  const [spotifySearchVerse, setSpotifySearchVerse] = useState<Verse | null>(null);
+  
+  // Debug effect to log modal state changes
+  useEffect(() => {
+    console.log('Spotify modal state changed:', { showSpotifyModal, hasVerse: !!spotifySearchVerse });
+  }, [showSpotifyModal, spotifySearchVerse]);
 
   // Calculate selected verses for current chapter
   const selectedVersesInChapter = selectedVerses.filter(
@@ -260,11 +274,11 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                 ))}
               </ul>
             </div>
-          </div>
-        </div>
-      </Card>
-    );
-  }
+                  </div>
+      </div>
+    </Card>
+  );
+}
 
   // Group verses into paragraphs
   // For Psalms and other poetry, use smaller groupings
@@ -279,108 +293,165 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   }
 
   return (
-    <Card className="h-full flex flex-col shadow-lg">
-      <div className="p-6 border-b bg-muted/30">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <BookOpenIcon className="w-6 h-6 mt-1 text-muted-foreground" />
-            <div>
-              <h2 className="text-2xl font-bold">{scripture.reference}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {scripture.translation_name || 'King James Version'}
-              </p>
+    <>
+      <Card className="h-full flex flex-col shadow-lg">
+        <div className="p-6 border-b bg-muted/30">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <BookOpenIcon className="w-6 h-6 mt-1 text-muted-foreground" />
+              <div>
+                <h2 className="text-2xl font-bold">{scripture.reference}</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {scripture.translation_name || 'King James Version'}
+                </p>
+              </div>
             </div>
+            <Select value={translation} onValueChange={setTranslation}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Select translation" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[400px]">
+                {loadingTranslations ? (
+                  <div className="p-2 text-sm text-muted-foreground">Loading translations...</div>
+                ) : (
+                  <>
+                    {/* Show default translations first */}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Popular</div>
+                    {DEFAULT_TRANSLATIONS.map((trans) => (
+                      <SelectItem key={trans.id} value={trans.id}>
+                        {trans.name}
+                      </SelectItem>
+                    ))}
+                    
+                    {/* Show API.Bible translations (English only) */}
+                    {translations.length > 0 && (
+                      <>
+                        <div className="my-1 h-px bg-border" />
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">More English Translations</div>
+                        {translations
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((trans: any) => (
+                            <SelectItem key={trans.id} value={trans.id}>
+                              <span>{trans.name}</span>
+                              {trans.abbreviation && (
+                                <span className="ml-2 text-xs text-muted-foreground">({trans.abbreviation})</span>
+                              )}
+                            </SelectItem>
+                          ))}
+                      </>
+                    )}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={translation} onValueChange={setTranslation}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Select translation" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[400px]">
-              {loadingTranslations ? (
-                <div className="p-2 text-sm text-muted-foreground">Loading translations...</div>
-              ) : (
-                <>
-                  {/* Show default translations first */}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Popular</div>
-                  {DEFAULT_TRANSLATIONS.map((trans) => (
-                    <SelectItem key={trans.id} value={trans.id}>
-                      {trans.name}
-                    </SelectItem>
-                  ))}
-                  
-                  {/* Show API.Bible translations (English only) */}
-                  {translations.length > 0 && (
-                    <>
-                      <div className="my-1 h-px bg-border" />
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">More English Translations</div>
-                      {translations
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((trans: any) => (
-                          <SelectItem key={trans.id} value={trans.id}>
-                            <span>{trans.name}</span>
-                            {trans.abbreviation && (
-                              <span className="ml-2 text-xs text-muted-foreground">({trans.abbreviation})</span>
-                            )}
-                          </SelectItem>
-                        ))}
-                    </>
-                  )}
-                </>
-              )}
-            </SelectContent>
-          </Select>
         </div>
-      </div>
+        
+        <div className="flex-1 p-6 lg:p-8 overflow-auto bg-background">
+          <div className="max-w-3xl mx-auto">
+            {paragraphs.map((paragraph, index) => (
+              <p 
+                key={index} 
+                className={`mb-6 leading-relaxed text-base ${
+                  isPoetry ? 'pl-4 border-l-2 border-muted' : ''
+                }`}
+              >
+                {paragraph.map((verse, verseIndex) => {
+                  const isSelected = isVerseSelected(book, chapter, verse.verse);
+                  return (
+                    <ContextMenu key={verse.verse}>
+                      <ContextMenuTrigger asChild>
+                        <span 
+                          className={`
+                            group cursor-pointer rounded px-1 -mx-1 transition-all
+                            ${isSelected && isDragging ? 'opacity-50' : ''}
+                            ${isSelected ? 'cursor-grab active:cursor-grabbing' : ''}
+                          `}
+                          style={isSelected ? selectedVerseStyle : undefined}
+                          onClick={(e) => {
+                            // Only handle click if not right-clicking
+                            if (e.button === 0) {
+                              handleVerseClick(verse);
+                            }
+                          }}
+                          onContextMenu={(e) => {
+                            // Prevent default browser context menu
+                            e.preventDefault();
+                          }}
+                          draggable={isSelected}
+                          onDragStart={handleDragStart}
+                          onDragEnd={handleDragEnd}
+                          title={isSelected ? 'Drag to notes editor' : 'Click to select'}
+                        >
+                          <sup className={`
+                            text-xs mr-1 font-bold transition-colors
+                            ${isSelected 
+                              ? 'text-green-700' 
+                              : 'text-primary group-hover:text-primary/80'
+                            }
+                          `}>
+                            {verse.verse}
+                          </sup>
+                          <span className={`
+                            transition-colors
+                            ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
+                          `}>
+                            {verse.text}
+                          </span>
+                          {verseIndex < paragraph.length - 1 && ' '}
+                        </span>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem 
+                          onClick={() => handleVerseClick(verse)}
+                          className="gap-2"
+                        >
+                          {isSelected ? 'Deselect' : 'Select'} Verse
+                        </ContextMenuItem>
+                        <ContextMenuItem 
+                          onSelect={(e) => {
+                            // Prevent default behavior
+                            e.preventDefault();
+                            // Set the verse for Spotify search
+                            setSpotifySearchVerse(verse);
+                            // Use setTimeout with a longer delay to ensure context menu is fully closed
+                            setTimeout(() => {
+                              setShowSpotifyModal(true);
+                            }, 150);
+                          }}
+                          className="gap-2"
+                        >
+                          <Music className="h-4 w-4" />
+                          Search on Spotify
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  );
+                })}
+              </p>
+            ))}
+          </div>
+        </div>
+      </Card>
       
-      <div className="flex-1 p-6 lg:p-8 overflow-auto bg-background">
-        <div className="max-w-3xl mx-auto">
-          {paragraphs.map((paragraph, index) => (
-            <p 
-              key={index} 
-              className={`mb-6 leading-relaxed text-base ${
-                isPoetry ? 'pl-4 border-l-2 border-muted' : ''
-              }`}
-            >
-              {paragraph.map((verse, verseIndex) => {
-                const isSelected = isVerseSelected(book, chapter, verse.verse);
-                return (
-                  <span 
-                    key={verse.verse}
-                    className={`
-                      group cursor-pointer rounded px-1 -mx-1 transition-all
-                      ${isSelected && isDragging ? 'opacity-50' : ''}
-                      ${isSelected ? 'cursor-grab active:cursor-grabbing' : ''}
-                    `}
-                    style={isSelected ? selectedVerseStyle : undefined}
-                    onClick={() => handleVerseClick(verse)}
-                    draggable={isSelected}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                    title={isSelected ? 'Drag to notes editor' : 'Click to select'}
-                  >
-                    <sup className={`
-                      text-xs mr-1 font-bold transition-colors
-                      ${isSelected 
-                        ? 'text-green-700' 
-                        : 'text-primary group-hover:text-primary/80'
-                      }
-                    `}>
-                      {verse.verse}
-                    </sup>
-                    <span className={`
-                      transition-colors
-                      ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
-                    `}>
-                      {verse.text}
-                    </span>
-                    {verseIndex < paragraph.length - 1 && ' '}
-                  </span>
-                );
-              })}
-            </p>
-          ))}
-        </div>
-      </div>
-    </Card>
+      <SpotifySearchModal 
+        open={showSpotifyModal}
+        onOpenChange={(open) => {
+          console.log('Modal onOpenChange called with:', open);
+          setShowSpotifyModal(open);
+          if (!open) {
+            // Clear the verse when modal closes
+            setSpotifySearchVerse(null);
+          }
+        }}
+        verses={spotifySearchVerse ? [{
+          book,
+          chapter,
+          verse: spotifySearchVerse.verse,
+          text: spotifySearchVerse.text,
+          translation: scripture?.translation_name || 'King James Version',
+        }] : undefined}
+      />
+    </>
   );
 } 
