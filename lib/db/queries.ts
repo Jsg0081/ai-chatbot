@@ -27,6 +27,8 @@ import {
   type DBMessage,
   type Chat,
   stream,
+  note,
+  type Note,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
 import { generateUUID } from '../utils';
@@ -521,18 +523,126 @@ export async function createStreamId({
 
 export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
   try {
-    const streamIds = await db
+    return await db
       .select({ id: stream.id })
       .from(stream)
       .where(eq(stream.chatId, chatId))
-      .orderBy(asc(stream.createdAt))
-      .execute();
-
-    return streamIds.map(({ id }) => id);
+      .orderBy(desc(stream.createdAt));
   } catch (error) {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get stream ids by chat id',
+    );
+  }
+}
+
+// Note-related queries
+export async function saveNote({
+  id,
+  title,
+  content,
+  userId,
+  chatId,
+}: {
+  id: string;
+  title: string;
+  content: string;
+  userId: string;
+  chatId?: string;
+}) {
+  try {
+    return await db.insert(note).values({
+      id,
+      title,
+      content,
+      userId,
+      chatId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    throw new ChatSDKError('bad_request:database', 'Failed to save note');
+  }
+}
+
+export async function updateNote({
+  id,
+  title,
+  content,
+  userId,
+}: {
+  id: string;
+  title: string;
+  content: string;
+  userId: string;
+}) {
+  try {
+    return await db
+      .update(note)
+      .set({ title, content, updatedAt: new Date() })
+      .where(and(eq(note.id, id), eq(note.userId, userId)));
+  } catch (error) {
+    throw new ChatSDKError('bad_request:database', 'Failed to update note');
+  }
+}
+
+export async function getNotesByUserId({
+  userId,
+  limit = 50,
+}: {
+  userId: string;
+  limit?: number;
+}) {
+  try {
+    return await db
+      .select()
+      .from(note)
+      .where(eq(note.userId, userId))
+      .orderBy(desc(note.updatedAt))
+      .limit(limit);
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get notes by user id',
+    );
+  }
+}
+
+export async function getNoteById({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  try {
+    const [selectedNote] = await db
+      .select()
+      .from(note)
+      .where(and(eq(note.id, id), eq(note.userId, userId)));
+    return selectedNote;
+  } catch (error) {
+    throw new ChatSDKError('bad_request:database', 'Failed to get note by id');
+  }
+}
+
+export async function deleteNoteById({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  try {
+    const [deletedNote] = await db
+      .delete(note)
+      .where(and(eq(note.id, id), eq(note.userId, userId)))
+      .returning();
+    return deletedNote;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to delete note by id',
     );
   }
 }

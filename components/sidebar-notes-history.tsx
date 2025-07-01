@@ -23,14 +23,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useSession } from 'next-auth/react';
 
 interface Note {
   id: string;
   title: string;
   content: string;
-  createdAt: Date;
-  updatedAt: Date;
-  chatId?: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  chatId?: string | null;
+  userId?: string;
 }
 
 export function SidebarNotesHistory() {
@@ -38,56 +40,43 @@ export function SidebarNotesHistory() {
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activeNoteId, setActiveNoteId] = useState<string | undefined>();
+  const { data: session } = useSession();
 
-  // Load notes on mount
+  // Load notes on mount and when session changes
   useEffect(() => {
-    loadNotes();
-  }, []);
+    if (session?.user?.id) {
+      loadNotes();
+    } else {
+      setNotes([]);
+    }
+  }, [session]);
 
   // Listen for note updates
   useEffect(() => {
     const handleNotesUpdate = () => {
-      loadNotes();
+      if (session?.user?.id) {
+        loadNotes();
+      }
     };
 
     window.addEventListener('notes-updated', handleNotesUpdate);
     return () => {
       window.removeEventListener('notes-updated', handleNotesUpdate);
     };
-  }, []);
+  }, [session]);
 
-  const loadNotes = () => {
+  const loadNotes = async () => {
     try {
-      const notesListKey = 'notes-list';
-      const notesList = localStorage.getItem(notesListKey);
-      if (!notesList) return;
-
-      const noteIds: string[] = JSON.parse(notesList);
-      const loadedNotes: Note[] = [];
-
-      noteIds.forEach((noteId) => {
-        const noteKey = `note-${noteId}`;
-        const noteData = localStorage.getItem(noteKey);
-        if (noteData) {
-          try {
-            const note: Note = JSON.parse(noteData);
-            // Parse dates
-            note.createdAt = new Date(note.createdAt);
-            note.updatedAt = new Date(note.updatedAt);
-            // Ensure title exists for backward compatibility
-            if (!note.title) {
-              note.title = getPreviewText(note.content) || 'New Note';
-            }
-            loadedNotes.push(note);
-          } catch (error) {
-            console.error('Error parsing note:', error);
-          }
-        }
-      });
-
-      setNotes(loadedNotes);
+      const response = await fetch('/api/notes');
+      if (!response.ok) {
+        throw new Error('Failed to fetch notes');
+      }
+      
+      const notesData = await response.json();
+      setNotes(notesData);
     } catch (error) {
       console.error('Error loading notes:', error);
+      toast.error('Failed to load notes');
     }
   };
 
@@ -111,20 +100,16 @@ export function SidebarNotesHistory() {
     if (!deleteNoteId) return;
 
     try {
-      // Remove note from storage
-      localStorage.removeItem(`note-${deleteNoteId}`);
+      const response = await fetch(`/api/notes?id=${deleteNoteId}`, {
+        method: 'DELETE',
+      });
 
-      // Update notes list
-      const notesListKey = 'notes-list';
-      const notesList = localStorage.getItem(notesListKey);
-      if (notesList) {
-        const noteIds: string[] = JSON.parse(notesList);
-        const updatedNoteIds = noteIds.filter(id => id !== deleteNoteId);
-        localStorage.setItem(notesListKey, JSON.stringify(updatedNoteIds));
+      if (!response.ok) {
+        throw new Error('Failed to delete note');
       }
 
       // Trigger update event
-      window.dispatchEvent(new Event('notesUpdated'));
+      window.dispatchEvent(new Event('notes-updated'));
 
       toast.success('Note deleted successfully');
     } catch (error) {
@@ -135,6 +120,21 @@ export function SidebarNotesHistory() {
     setShowDeleteDialog(false);
     setDeleteNoteId(null);
   };
+
+  if (!session?.user) {
+    return (
+      <SidebarGroup>
+        <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
+          Notes
+        </div>
+        <SidebarGroupContent>
+          <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2">
+            Sign in to save notes
+          </div>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
 
   if (notes.length === 0) {
     return (
@@ -173,7 +173,7 @@ export function SidebarNotesHistory() {
                       {note.title || 'New Note'}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(note.updatedAt, 'MMM d, h:mm a')}
+                      {format(new Date(note.updatedAt), 'MMM d, h:mm a')}
                     </div>
                   </div>
                 </SidebarMenuButton>

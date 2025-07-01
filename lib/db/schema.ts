@@ -125,6 +125,21 @@ export const document = pgTable(
 
 export type Document = InferSelectModel<typeof document>;
 
+export const note = pgTable('Note', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  title: text('title').notNull().default('New Note'),
+  content: text('content').notNull().default(''),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  chatId: uuid('chatId')
+    .references(() => chat.id),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type Note = InferSelectModel<typeof note>;
+
 export const suggestion = pgTable(
   'Suggestion',
   {

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Bold, Italic, List, ListOrdered, Plus } from 'lucide-react';
-import { toast } from '@/components/toast';
+import { FileText, Bold, Italic, List, ListOrdered, Plus, LogIn } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -14,6 +14,18 @@ import { BibleMentionList, getBibleSuggestions } from '@/components/editor/bible
 import tippy, { Instance } from 'tippy.js';
 import { ReactRenderer } from '@tiptap/react';
 import 'tippy.js/dist/tippy.css';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface NotesEditorProps {
   chatId?: string;
@@ -27,7 +39,8 @@ interface Note {
   content: string;
   createdAt: Date;
   updatedAt: Date;
-  chatId?: string;
+  chatId?: string | null;
+  userId?: string;
 }
 
 export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps) {
@@ -39,6 +52,14 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   const [isDragOver, setIsDragOver] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<{
+    title: string;
+    content: string;
+  } | null>(null);
+
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   // Initialize Tiptap editor
   const editor = useEditor({
@@ -212,51 +233,42 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     }
   }, [noteId]);
 
-  // Load current note from localStorage on mount or when currentNoteId changes
+  // Load current note from API on mount or when currentNoteId changes
   useEffect(() => {
-    if (currentNoteId && typeof window !== 'undefined') {
-      const savedNote = localStorage.getItem(`note-${currentNoteId}`);
-      if (savedNote) {
-        try {
-          const note: Note = JSON.parse(savedNote);
-          setContent(note.content || '');
-          setTitle(note.title || '');
-          if (editor && note.content) {
-            editor.commands.setContent(note.content);
-          }
-          setHasUserInteracted(true); // Mark as interacted if loading existing note
-        } catch (error) {
-          console.error('Error loading note:', error);
-        }
-      }
+    if (currentNoteId && session?.user?.id) {
+      // For now, we'll skip loading individual notes since we're creating new ones
+      // In a full implementation, you'd load the note from the API here
     }
-  }, [currentNoteId, editor]);
+  }, [currentNoteId, session]);
 
-  // Save note to localStorage
-  const saveNote = () => {
+  // Save note to API
+  const saveNote = async () => {
     if (!currentNoteId || !hasUserInteracted) return;
     
-    if (typeof window !== 'undefined') {
-      const note: Note = {
-        id: currentNoteId,
-        title: title || 'New Note',
-        content,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        chatId,
-      };
+    // Check if user is authenticated
+    if (!session || !session.user) {
+      // Save pending data and show auth dialog
+      setPendingSaveData({ title: title || 'New Note', content });
+      setShowAuthDialog(true);
+      return;
+    }
 
-      // Save the note
-      localStorage.setItem(`note-${currentNoteId}`, JSON.stringify(note));
+    try {
+      const response = await fetch('/api/notes', {
+        method: currentNoteId ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: currentNoteId,
+          title: title || 'New Note',
+          content,
+          chatId,
+        }),
+      });
 
-      // Update the notes list
-      const notesListKey = 'notes-list';
-      const notesList = localStorage.getItem(notesListKey);
-      let notes: string[] = notesList ? JSON.parse(notesList) : [];
-      
-      if (!notes.includes(currentNoteId)) {
-        notes.unshift(currentNoteId);
-        localStorage.setItem(notesListKey, JSON.stringify(notes));
+      if (!response.ok) {
+        throw new Error('Failed to save note');
       }
 
       setLastSaved(new Date());
@@ -264,7 +276,20 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
 
       // Notify sidebar to refresh
       window.dispatchEvent(new Event('notes-updated'));
+    } catch (error) {
+      console.error('Error saving note:', error);
+      toast.error('Failed to save note');
     }
+  };
+
+  // Handle sign in
+  const handleSignIn = () => {
+    router.push('/login');
+  };
+
+  // Handle sign up
+  const handleSignUp = () => {
+    router.push('/register');
   };
 
   // Auto-save content after delay
@@ -502,6 +527,28 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
           <EditorContent editor={editor} className="h-full" />
         </div>
       </CardContent>
+
+      {/* Authentication Dialog */}
+      <AlertDialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign in to save notes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You need to be signed in to save your notes. Sign in or create an account to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSignUp}>
+              Sign up
+            </AlertDialogAction>
+            <AlertDialogAction onClick={handleSignIn}>
+              <LogIn className="mr-2 h-4 w-4" />
+              Sign in
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 } 
