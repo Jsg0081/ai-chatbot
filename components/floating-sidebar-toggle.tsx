@@ -22,18 +22,16 @@ export function FloatingSidebarToggle({ className }: { className?: string }) {
         <TooltipTrigger asChild>
           <Button
             onClick={toggleSidebar}
-            variant="outline"
+            variant="ghost"
             size="icon"
-            className="h-12 w-12 rounded-xl bg-background/95 backdrop-blur-sm border-2 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+            className="fixed top-4 left-4 z-50 size-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-accent"
           >
-            <Image
-              src="/images/sparklogo_icon.png"
-              alt="Open Sidebar"
-              width={28}
-              height={28}
-              className="w-7 h-7"
-              priority
+            <img 
+              src="/images/sparklogo_icon.png" 
+              alt="Spark Logo" 
+              className="size-7"
             />
+            <span className="sr-only">Toggle sidebar</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right">

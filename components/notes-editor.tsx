@@ -5,14 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Bold, Italic, List, ListOrdered, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { cn, generateUUID } from '@/lib/utils';
+import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { generateUUID } from '@/lib/utils';
 import { BibleMention } from '@/lib/editor/bible-mention';
 import { BibleMentionList, getBibleSuggestions } from '@/components/editor/bible-mention-list';
 import tippy, { Instance } from 'tippy.js';
-import { ReactRenderer } from '@tiptap/react';
 import 'tippy.js/dist/tippy.css';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -460,7 +458,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
-            <FileText className="h-5 w-5 text-muted-foreground" />
+            <FileText className="size-5 text-muted-foreground" />
             {isEditingTitle ? (
               <input
                 type="text"

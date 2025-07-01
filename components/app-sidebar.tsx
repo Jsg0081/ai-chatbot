@@ -96,7 +96,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     className="p-2 h-fit md:hidden"
                     onClick={toggleSidebar}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="size-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent align="end">Close Sidebar</TooltipContent>
