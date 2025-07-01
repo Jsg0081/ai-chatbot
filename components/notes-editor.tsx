@@ -286,10 +286,12 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   const saveNote = async () => {
     if (!currentNoteId || !hasUserInteracted) return;
     
-    // Check if user is authenticated (excluding guest users)
-    if (!session || !session.user || session.user.type === 'guest') {
-      // Show auth modal if not authenticated or is guest
-      setShowAuthModal(true);
+    // Check if user is authenticated (excluding guest users) and session is loaded
+    if (status === 'loading' || !session || !session.user || session.user.type === 'guest') {
+      // Show auth modal if not authenticated or is guest (but not while loading)
+      if (status !== 'loading') {
+        setShowAuthModal(true);
+      }
       return;
     }
 
@@ -339,17 +341,27 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   useEffect(() => {
     if (!hasUserInteracted || !currentNoteId) return;
     
+    // Don't auto-save for guest users or while session is loading
+    if (status === 'loading' || !session || !session.user || session.user.type === 'guest') {
+      return;
+    }
+    
     setIsAutoSaving(true);
     const timer = setTimeout(() => {
       saveNote();
     }, 1000); // Save after 1 second of no changes
 
     return () => clearTimeout(timer);
-  }, [content, currentNoteId, hasUserInteracted]);
+  }, [content, currentNoteId, hasUserInteracted, session, status]);
 
   // Auto-save title after delay
   useEffect(() => {
     if (!hasUserInteracted || !currentNoteId || !title) return;
+    
+    // Don't auto-save for guest users or while session is loading
+    if (status === 'loading' || !session || !session.user || session.user.type === 'guest') {
+      return;
+    }
     
     setIsAutoSaving(true);
     const timer = setTimeout(() => {
@@ -357,7 +369,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     }, 500); // Save title faster
 
     return () => clearTimeout(timer);
-  }, [title, currentNoteId, hasUserInteracted]);
+  }, [title, currentNoteId, hasUserInteracted, session, status]);
 
   // Create new note
   const createNewNote = () => {
@@ -470,12 +482,12 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
             )}
           </div>
           <div className="flex items-center gap-2">
-            {isAutoSaving && (
+            {isAutoSaving && session?.user && session.user.type !== 'guest' && (
               <span className="text-xs text-muted-foreground">
                 Saving...
               </span>
             )}
-            {lastSaved && !isAutoSaving && (
+            {lastSaved && !isAutoSaving && session?.user && session.user.type !== 'guest' && (
               <span className="text-xs text-muted-foreground">
                 Saved {lastSaved.toLocaleTimeString()}
               </span>

@@ -96,6 +96,8 @@ const BIBLE_BOOKS_DATA = {
   ],
 };
 
+export { BIBLE_BOOKS_DATA };
+
 interface BibleBooksProps {
   onBookSelect?: (book: string, chapter?: number) => void;
 }

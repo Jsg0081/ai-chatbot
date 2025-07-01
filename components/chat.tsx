@@ -20,6 +20,7 @@ import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
+import { FloatingSidebarToggle } from './floating-sidebar-toggle';
 
 export function Chat({
   id,
@@ -118,6 +119,7 @@ export function Chat({
 
   return (
     <>
+      <FloatingSidebarToggle />
       <div className="flex flex-col min-w-0 h-full bg-background">
         <ChatHeader
           chatId={id}

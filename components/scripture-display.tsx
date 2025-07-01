@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpenIcon } from 'lucide-react';
 import { useVerse } from '@/lib/verse-context';
+import { BIBLE_BOOKS_DATA } from './bible-books';
 
 interface ScriptureDisplayProps {
   book: string;
@@ -130,6 +131,11 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
     setIsDragging(false);
   };
 
+  const handleBookSelect = (bookName: string) => {
+    // Logic to handle book selection, e.g., load the first chapter of the selected book
+    console.log(`Selected book: ${bookName}`);
+  };
+
   if (loading) {
     return (
       <Card className="p-6 h-full">
@@ -158,7 +164,39 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   }
 
   if (!scripture) {
-    return null;
+    return (
+      <Card className="p-6 h-full">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-4">Select a Book</h2>
+          <div className="flex justify-around">
+            <div>
+              <h3 className="font-semibold mb-2">Old Testament</h3>
+              <ul className="space-y-1">
+                {BIBLE_BOOKS_DATA.oldTestament.map((book: { name: string; chapters: number }) => (
+                  <li key={book.name}>
+                    <button className="text-primary hover:underline" onClick={() => handleBookSelect(book.name)}>
+                      {book.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">New Testament</h3>
+              <ul className="space-y-1">
+                {BIBLE_BOOKS_DATA.newTestament.map((book: { name: string; chapters: number }) => (
+                  <li key={book.name}>
+                    <button className="text-primary hover:underline" onClick={() => handleBookSelect(book.name)}>
+                      {book.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
   }
 
   // Group verses into paragraphs

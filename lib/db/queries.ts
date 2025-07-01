@@ -551,16 +551,30 @@ export async function saveNote({
   chatId?: string;
 }) {
   try {
-    return await db.insert(note).values({
+    console.log('Attempting to save note with userId:', userId);
+    const noteData = {
       id,
       title,
       content,
       userId,
-      chatId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+      ...(chatId ? { chatId } : {})
+    };
+    
+    const result = await db.insert(note).values(noteData);
+    console.log('Note saved successfully');
+    return result;
   } catch (error) {
+    console.error('Database error in saveNote:', error);
+    console.error('Failed to save note with data:', { id, title: title.substring(0, 50), userId, chatId });
+    if (error instanceof Error && 'code' in error) {
+      // PostgreSQL error codes
+      if ((error as any).code === '23503') {
+        // Foreign key violation
+        console.error('Foreign key violation - userId or chatId does not exist');
+      }
+    }
     throw new ChatSDKError('bad_request:database', 'Failed to save note');
   }
 }
