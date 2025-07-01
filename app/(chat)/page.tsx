@@ -3,6 +3,7 @@ import type { UIMessage } from 'ai';
 
 import { Chat } from '@/components/chat';
 import { ScriptureDisplay } from '@/components/scripture-display';
+import { NotesEditor } from '@/components/notes-editor';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import { generateUUID } from '@/lib/utils';
 import { DataStreamHandler } from '@/components/data-stream-handler';
@@ -84,6 +85,7 @@ export default async function Page({ searchParams }: PageProps) {
         <div className="h-screen overflow-hidden">
           <ResizablePanels
             scriptureContent={<ScriptureDisplay book={book} chapter={parseInt(chapter)} />}
+            notesContent={<NotesEditor chatId={id} />}
             chatContent={chatComponent}
           />
         </div>
@@ -92,11 +94,22 @@ export default async function Page({ searchParams }: PageProps) {
     );
   }
 
-  // Default view - just show chat
+  // Default view - show notes and chat
   return (
     <>
-      <div className="h-full">
-        {chatComponent}
+      <div className="h-screen overflow-hidden">
+        <ResizablePanels
+          scriptureContent={
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              <div className="text-center space-y-2">
+                <p className="text-sm">Select a book and chapter from the sidebar</p>
+                <p className="text-xs">to view scripture here</p>
+              </div>
+            </div>
+          }
+          notesContent={<NotesEditor chatId={id} />}
+          chatContent={chatComponent}
+        />
       </div>
       <DataStreamHandler id={id} />
     </>

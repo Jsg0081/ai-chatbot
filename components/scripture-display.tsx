@@ -38,8 +38,8 @@ const TRANSLATIONS = [
 
 // Add the following CSS class to style selected verses
 const selectedVerseStyle = {
-  color: '#32CD32', // Lime Green
-  backgroundColor: 'rgba(50, 205, 50, 0.15)', // Lime Green with 15% opacity
+  color: '#80ffdb', // Lime Green
+  backgroundColor: 'rgba(128, 255, 219, 0.10)', // Lime Green with 15% opacity
   padding: '2px 4px',
   borderRadius: '4px',
 };
