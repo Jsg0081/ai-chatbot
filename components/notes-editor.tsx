@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Bold, Italic, List, ListOrdered, Plus, LogIn } from 'lucide-react';
+import { FileText, Bold, Italic, List, ListOrdered, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -14,18 +14,8 @@ import { BibleMentionList, getBibleSuggestions } from '@/components/editor/bible
 import tippy, { Instance } from 'tippy.js';
 import { ReactRenderer } from '@tiptap/react';
 import 'tippy.js/dist/tippy.css';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 interface NotesEditorProps {
   chatId?: string;
@@ -52,14 +42,11 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   const [isDragOver, setIsDragOver] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [pendingSaveData, setPendingSaveData] = useState<{
-    title: string;
-    content: string;
-  } | null>(null);
+  // Removed auth dialog states - now redirecting immediately
 
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Initialize Tiptap editor
   const editor = useEditor({
@@ -178,6 +165,14 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     },
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
+      
+      // Check if user is typing and not authenticated
+      if (newContent && newContent !== '<p></p>' && !session && status !== 'loading') {
+        // Redirect to login immediately with callback URL
+        router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+        return;
+      }
+      
       setContent(newContent);
       
       // Mark that user has interacted if they've typed something
@@ -247,9 +242,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     
     // Check if user is authenticated
     if (!session || !session.user) {
-      // Save pending data and show auth dialog
-      setPendingSaveData({ title: title || 'New Note', content });
-      setShowAuthDialog(true);
+      // Redirect to login if not authenticated with callback URL
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -280,16 +274,6 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
       console.error('Error saving note:', error);
       toast.error('Failed to save note');
     }
-  };
-
-  // Handle sign in
-  const handleSignIn = () => {
-    router.push('/login');
-  };
-
-  // Handle sign up
-  const handleSignUp = () => {
-    router.push('/register');
   };
 
   // Auto-save content after delay
@@ -331,6 +315,13 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
 
   // Handle title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Check if user is typing and not authenticated
+    if (!session && status !== 'loading') {
+      // Redirect to login immediately with callback URL
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    
     setTitle(e.target.value);
     if (!hasUserInteracted) {
       setHasUserInteracted(true);
@@ -368,6 +359,13 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+
+    // Check if user is not authenticated
+    if (!session && status !== 'loading') {
+      // Redirect to login immediately with callback URL
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
 
     const verseData = e.dataTransfer.getData('text/plain');
     if (verseData && editor) {
@@ -514,7 +512,9 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
         >
           {(!content || content === '<p></p>') && (
             <div className="absolute top-3 left-3 text-sm text-muted-foreground pointer-events-none">
-              Start typing your notes...
+              {!session && status !== 'loading' 
+                ? 'Sign in to create and save notes...' 
+                : 'Start typing your notes...'}
             </div>
           )}
           {isDragOver && (
@@ -528,27 +528,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
         </div>
       </CardContent>
 
-      {/* Authentication Dialog */}
-      <AlertDialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Sign in to save notes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You need to be signed in to save your notes. Sign in or create an account to continue.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSignUp}>
-              Sign up
-            </AlertDialogAction>
-            <AlertDialogAction onClick={handleSignIn}>
-              <LogIn className="mr-2 h-4 w-4" />
-              Sign in
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </Card>
   );
 } 
