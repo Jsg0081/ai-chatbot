@@ -57,7 +57,7 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
               maxSize={60}
               className="min-h-[20vh]"
             >
-              <div className="h-full pb-2 overflow-y-auto">
+              <div className="h-full pb-2 overflow-y-auto ml-16">
                 {scriptureContent}
               </div>
             </Panel>
@@ -108,7 +108,7 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
             maxSize={50}
             className="min-w-[250px]"
           >
-            <div className="h-full pr-2 overflow-y-auto">
+            <div className="h-full pr-2 overflow-y-auto ml-16">
               {scriptureContent}
             </div>
           </Panel>

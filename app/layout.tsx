@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://biblespark.app'),
   title: 'Bible Spark - Learn the Word',
   description: 'Bible Spark is a tool that helps you study the Word of God.',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 };
 
 export const viewport = {
