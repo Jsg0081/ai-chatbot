@@ -150,9 +150,9 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     editorProps: {
       attributes: {
         class: cn(
-          'w-full h-full p-3 text-sm rounded-md overflow-auto',
+          'w-full h-full p-3 text-sm rounded-md',
           'bg-background focus:outline-none',
-          'min-h-[200px]',
+          'min-h-full',
           // Prose-like styles for better typography
           'prose prose-sm max-w-none',
           'prose-p:my-2',
@@ -454,8 +454,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   }
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
+    <Card className="h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
             <FileText className="size-5 text-muted-foreground" />
@@ -570,10 +570,10 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 p-0">
+      <CardContent className="flex-1 p-0 overflow-hidden">
         <div 
           className={cn(
-            "relative h-full transition-colors",
+            "relative h-full transition-colors overflow-hidden",
             isDragOver && "bg-primary/5 ring-2 ring-primary/20 ring-inset"
           )}
           onDragOver={handleDragOver}
@@ -594,7 +594,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
               </div>
             </div>
           )}
-          <EditorContent editor={editor} className="h-full" />
+          <EditorContent editor={editor} className="h-full overflow-y-auto" />
         </div>
       </CardContent>
       
