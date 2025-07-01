@@ -16,6 +16,7 @@ import { ReactRenderer } from '@tiptap/react';
 import 'tippy.js/dist/tippy.css';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { AuthModal } from '@/components/auth-modal';
 
 interface NotesEditorProps {
   chatId?: string;
@@ -47,6 +48,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Initialize Tiptap editor
   const editor = useEditor({
@@ -168,8 +170,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
       
       // Check if user is typing and not authenticated
       if (newContent && newContent !== '<p></p>' && !session && status !== 'loading') {
-        // Redirect to login immediately with callback URL
-        router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+        // Show auth modal instead of redirecting
+        setShowAuthModal(true);
         return;
       }
       
@@ -242,8 +244,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     
     // Check if user is authenticated
     if (!session || !session.user) {
-      // Redirect to login if not authenticated with callback URL
-      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      // Show auth modal if not authenticated
+      setShowAuthModal(true);
       return;
     }
 
@@ -317,8 +319,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Check if user is typing and not authenticated
     if (!session && status !== 'loading') {
-      // Redirect to login immediately with callback URL
-      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      // Show auth modal instead of redirecting
+      setShowAuthModal(true);
       return;
     }
     
@@ -362,8 +364,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
 
     // Check if user is not authenticated
     if (!session && status !== 'loading') {
-      // Redirect to login immediately with callback URL
-      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      // Show auth modal instead of redirecting
+      setShowAuthModal(true);
       return;
     }
 
@@ -527,8 +529,17 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
           <EditorContent editor={editor} className="h-full" />
         </div>
       </CardContent>
-
-
+      
+      <AuthModal 
+        open={showAuthModal} 
+        onOpenChange={setShowAuthModal}
+        onSuccess={() => {
+          // Re-trigger save after successful auth
+          if (hasUserInteracted) {
+            saveNote();
+          }
+        }}
+      />
     </Card>
   );
 } 
