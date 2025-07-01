@@ -313,20 +313,20 @@ function PureMultimodalInput({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
-          className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg border border-border/50"
+          className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg border border-border/50 overflow-hidden"
         >
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold text-muted-foreground">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
                 {selectedVerses.length} verse{selectedVerses.length > 1 ? 's' : ''} selected
               </span>
               {selectedVerses[0]?.translation && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground truncate">
                   ({selectedVerses[0].translation})
                 </span>
               )}
             </div>
-            <p className="text-sm text-foreground/80 truncate">
+            <p className="text-sm text-foreground/80 line-clamp-2">
               {getFormattedVerses()}
             </p>
           </div>

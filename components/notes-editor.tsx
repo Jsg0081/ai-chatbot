@@ -456,37 +456,37 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   return (
     <Card className="h-full flex flex-col overflow-hidden">
       <CardHeader className="pb-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-1">
-            <FileText className="size-5 text-muted-foreground" />
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <FileText className="size-5 text-muted-foreground flex-shrink-0" />
             {isEditingTitle ? (
               <input
                 type="text"
                 value={title}
                 onChange={handleTitleChange}
                 onKeyDown={handleTitleKeyDown}
-                className="text-lg font-semibold bg-transparent border-none outline-none focus:ring-0 p-0 flex-1"
+                className="text-lg font-semibold bg-transparent border-none outline-none focus:ring-0 p-0 flex-1 min-w-0"
                 autoFocus
                 placeholder="Enter note title..."
               />
             ) : (
               <h3
-                className="text-lg font-semibold cursor-text hover:bg-muted/50 px-2 py-1 rounded -mx-2 -my-1 transition-colors flex-1"
+                className="text-lg font-semibold cursor-text hover:bg-muted/50 px-2 py-1 rounded -mx-2 -my-1 transition-colors flex-1 truncate"
                 onClick={() => setIsEditingTitle(true)}
-                title="Click to edit title"
+                title={title || 'New Note'}
               >
                 {title || 'New Note'}
               </h3>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {isAutoSaving && session?.user && session.user.type !== 'guest' && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
                 Saving...
               </span>
             )}
             {lastSaved && !isAutoSaving && session?.user && session.user.type !== 'guest' && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground truncate">
                 Saved {lastSaved.toLocaleTimeString()}
               </span>
             )}
@@ -495,6 +495,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
               size="sm"
               variant="outline"
               title="Create new note"
+              className="flex-shrink-0"
             >
               <Plus className="h-4 w-4" />
             </Button>
