@@ -27,14 +27,15 @@ interface ScriptureData {
   translation_note: string;
 }
 
-const TRANSLATIONS = [
-  { id: 'esv', name: 'English Standard Version' },
-  { id: 'asv', name: 'American Standard Version' },
-  { id: 'bbe', name: 'Bible in Basic English' },
-  { id: 'darby', name: 'Darby Translation' },
-  { id: 'kjv', name: 'King James Version' },
-  { id: 'web', name: 'World English Bible' },
-  { id: 'ylt', name: "Young's Literal Translation" },
+// Default translations for fallback
+const DEFAULT_TRANSLATIONS = [
+  { id: 'esv', name: 'English Standard Version', type: 'local' },
+  { id: 'asv', name: 'American Standard Version', type: 'bible-api' },
+  { id: 'bbe', name: 'Bible in Basic English', type: 'bible-api' },
+  { id: 'darby', name: 'Darby Translation', type: 'bible-api' },
+  { id: 'kjv', name: 'King James Version', type: 'bible-api' },
+  { id: 'web', name: 'World English Bible', type: 'bible-api' },
+  { id: 'ylt', name: "Young's Literal Translation", type: 'bible-api' },
 ];
 
 // Add the following CSS class to style selected verses
@@ -52,12 +53,59 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const [error, setError] = useState<string | null>(null);
   const [translation, setTranslation] = useState('esv');
   const [isDragging, setIsDragging] = useState(false);
+  const [translations, setTranslations] = useState<any[]>([]);
+  const [loadingTranslations, setLoadingTranslations] = useState(true);
   const { addVerse, isVerseSelected, selectedVerses } = useVerse();
 
   // Calculate selected verses for current chapter
   const selectedVersesInChapter = selectedVerses.filter(
     v => v.book === book && v.chapter === chapter
   );
+
+  // Fetch available translations from API.Bible
+  useEffect(() => {
+    const fetchTranslations = async () => {
+      try {
+        setLoadingTranslations(true);
+        const response = await fetch('/api/bible-translations');
+        if (response.ok) {
+          const data = await response.json();
+          // Flatten the grouped translations and remove duplicates
+          const allTranslations: any[] = [];
+          const seenNames = new Set<string>();
+          
+          // Add default translation names to the seen set to avoid duplicates
+          DEFAULT_TRANSLATIONS.forEach(trans => {
+            seenNames.add(trans.name.toLowerCase().trim());
+          });
+          
+          data.forEach((group: any) => {
+            group.translations.forEach((trans: any) => {
+              const normalizedName = trans.name.toLowerCase().trim();
+              // Skip if we've already seen this translation name
+              if (!seenNames.has(normalizedName)) {
+                seenNames.add(normalizedName);
+                allTranslations.push({
+                  id: trans.id,
+                  name: trans.name,
+                  abbreviation: trans.abbreviation,
+                  language: group.language.name,
+                  type: 'api-bible'
+                });
+              }
+            });
+          });
+          setTranslations(allTranslations);
+        }
+      } catch (err) {
+        console.error('Failed to fetch translations:', err);
+      } finally {
+        setLoadingTranslations(false);
+      }
+    };
+
+    fetchTranslations();
+  }, []);
 
   useEffect(() => {
     const fetchScripture = async () => {
@@ -66,24 +114,43 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
 
       try {
         let response;
+        let data;
+        
+        // Check if this is an API.Bible translation
+        const selectedTranslation = translations.find(t => t.id === translation) || 
+                                  DEFAULT_TRANSLATIONS.find(t => t.id === translation);
         
         if (translation === 'esv') {
           // Use our ESV API route
           response = await fetch(
             `/api/esv?book=${encodeURIComponent(book)}&chapter=${chapter}`
           );
+          if (!response.ok) {
+            throw new Error('Failed to fetch scripture');
+          }
+          data = await response.json();
+        } else if (selectedTranslation?.type === 'api-bible') {
+          // Use API.Bible
+          response = await fetch(
+            `/api/bible-passage?bibleId=${encodeURIComponent(translation)}&book=${encodeURIComponent(book)}&chapter=${chapter}`
+          );
+          if (!response.ok) {
+            throw new Error('Failed to fetch scripture');
+          }
+          data = await response.json();
+          // Add the translation name from our cached data
+          data.translation_name = selectedTranslation.name;
         } else {
           // Use bible-api.com for other translations
           response = await fetch(
             `https://bible-api.com/${encodeURIComponent(book)}+${chapter}?translation=${translation}`
           );
+          if (!response.ok) {
+            throw new Error('Failed to fetch scripture');
+          }
+          data = await response.json();
         }
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch scripture');
-        }
-
-        const data = await response.json();
         setScripture(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load scripture');
@@ -225,15 +292,41 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
             </div>
           </div>
           <Select value={translation} onValueChange={setTranslation}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[220px]">
               <SelectValue placeholder="Select translation" />
             </SelectTrigger>
-            <SelectContent>
-              {TRANSLATIONS.map((trans) => (
-                <SelectItem key={trans.id} value={trans.id}>
-                  {trans.name}
-                </SelectItem>
-              ))}
+            <SelectContent className="max-h-[400px]">
+              {loadingTranslations ? (
+                <div className="p-2 text-sm text-muted-foreground">Loading translations...</div>
+              ) : (
+                <>
+                  {/* Show default translations first */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Popular</div>
+                  {DEFAULT_TRANSLATIONS.map((trans) => (
+                    <SelectItem key={trans.id} value={trans.id}>
+                      {trans.name}
+                    </SelectItem>
+                  ))}
+                  
+                  {/* Show API.Bible translations (English only) */}
+                  {translations.length > 0 && (
+                    <>
+                      <div className="my-1 h-px bg-border" />
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">More English Translations</div>
+                      {translations
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((trans: any) => (
+                          <SelectItem key={trans.id} value={trans.id}>
+                            <span>{trans.name}</span>
+                            {trans.abbreviation && (
+                              <span className="ml-2 text-xs text-muted-foreground">({trans.abbreviation})</span>
+                            )}
+                          </SelectItem>
+                        ))}
+                    </>
+                  )}
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
