@@ -168,8 +168,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
       
-      // Check if user is typing and not authenticated
-      if (newContent && newContent !== '<p></p>' && !session && status !== 'loading') {
+      // Check if user is typing and not authenticated (including guest users)
+      if (newContent && newContent !== '<p></p>' && (!session || session.user?.type === 'guest') && status !== 'loading') {
         // Show auth modal instead of redirecting
         setShowAuthModal(true);
         return;
@@ -242,9 +242,9 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
   const saveNote = async () => {
     if (!currentNoteId || !hasUserInteracted) return;
     
-    // Check if user is authenticated
-    if (!session || !session.user) {
-      // Show auth modal if not authenticated
+    // Check if user is authenticated (excluding guest users)
+    if (!session || !session.user || session.user.type === 'guest') {
+      // Show auth modal if not authenticated or is guest
       setShowAuthModal(true);
       return;
     }
@@ -317,8 +317,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
 
   // Handle title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Check if user is typing and not authenticated
-    if (!session && status !== 'loading') {
+    // Check if user is typing and not authenticated (including guest users)
+    if ((!session || session.user?.type === 'guest') && status !== 'loading') {
       // Show auth modal instead of redirecting
       setShowAuthModal(true);
       return;
@@ -362,8 +362,8 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     e.preventDefault();
     setIsDragOver(false);
 
-    // Check if user is not authenticated
-    if (!session && status !== 'loading') {
+    // Check if user is not authenticated (including guest users)
+    if ((!session || session.user?.type === 'guest') && status !== 'loading') {
       // Show auth modal instead of redirecting
       setShowAuthModal(true);
       return;
@@ -514,7 +514,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
         >
           {(!content || content === '<p></p>') && (
             <div className="absolute top-3 left-3 text-sm text-muted-foreground pointer-events-none">
-              {!session && status !== 'loading' 
+              {(!session || session.user?.type === 'guest') && status !== 'loading' 
                 ? 'Sign in to create and save notes...' 
                 : 'Start typing your notes...'}
             </div>

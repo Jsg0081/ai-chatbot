@@ -11,7 +11,7 @@ import { generateUUID } from '@/lib/utils';
 export async function GET(request: NextRequest) {
   const session = await auth();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || session.user.type === 'guest') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await auth();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || session.user.type === 'guest') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const session = await auth();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || session.user.type === 'guest') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const session = await auth();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || session.user.type === 'guest') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

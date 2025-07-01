@@ -44,7 +44,7 @@ export function SidebarNotesHistory() {
 
   // Load notes on mount and when session changes
   useEffect(() => {
-    if (session?.user?.id) {
+    if (session?.user?.id && session.user.type !== 'guest') {
       loadNotes();
     } else {
       setNotes([]);
@@ -54,7 +54,7 @@ export function SidebarNotesHistory() {
   // Listen for note updates
   useEffect(() => {
     const handleNotesUpdate = () => {
-      if (session?.user?.id) {
+      if (session?.user?.id && session.user.type !== 'guest') {
         loadNotes();
       }
     };
@@ -121,7 +121,7 @@ export function SidebarNotesHistory() {
     setDeleteNoteId(null);
   };
 
-  if (!session?.user) {
+  if (!session?.user || session.user.type === 'guest') {
     return (
       <SidebarGroup>
         <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
