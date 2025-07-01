@@ -14,8 +14,7 @@ export default async function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
-  const isCollapsed = cookieStore.get('sidebar:state')?.value !== 'true';
+  const [session] = await Promise.all([auth(), cookies()]);
 
   return (
     <>
@@ -25,7 +24,7 @@ export default async function Layout({
       />
       <VerseProvider>
         <ScriptureProvider>
-          <SidebarProvider defaultOpen={!isCollapsed}>
+          <SidebarProvider defaultOpen={true}>
             <AppSidebar user={session?.user} />
             <SidebarInset className="h-screen max-h-screen overflow-hidden">{children}</SidebarInset>
           </SidebarProvider>
