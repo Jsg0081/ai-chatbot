@@ -438,7 +438,7 @@ export async function GET(request: Request) {
   });
 
   const stream = await streamContext.resumableStream(
-    recentStreamId,
+    recentStreamId.id,
     () => emptyDataStream,
   );
 
