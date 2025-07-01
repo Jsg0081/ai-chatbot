@@ -15,6 +15,28 @@ export const metadata: Metadata = {
     shortcut: '/favicon.ico',
     apple: '/favicon.ico',
   },
+  openGraph: {
+    title: 'Bible Spark - Ignite the Word',
+    description: 'Bible Spark is a tool that helps you study the Word of God.',
+    url: 'https://biblespark.app',
+    siteName: 'Bible Spark',
+    images: [
+      {
+        url: '/images/spark_social.png',
+        width: 1200,
+        height: 630,
+        alt: 'Bible Spark - Ignite the Word',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Bible Spark - Ignite the Word',
+    description: 'Bible Spark is a tool that helps you study the Word of God.',
+    images: ['/images/spark_social.png'],
+  },
 };
 
 export const viewport = {
