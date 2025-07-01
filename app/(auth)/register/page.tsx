@@ -36,14 +36,14 @@ export default function Page() {
         type: 'error',
         description: 'Failed validating your submission!',
       });
-    } else if (state.status === 'success' && !isSuccessful) {
+    } else if (state.status === 'success') {
       toast({ type: 'success', description: 'Account created successfully!' });
 
       setIsSuccessful(true);
       updateSession();
       router.refresh();
     }
-  }, [state, router, updateSession, isSuccessful]);
+  }, [state, router, updateSession]);
 
   const handleSubmit = (formData: FormData) => {
     setEmail(formData.get('email') as string);

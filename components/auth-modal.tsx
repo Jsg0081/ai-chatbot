@@ -28,7 +28,6 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [isSuccessful, setIsSuccessful] = useState(false);
-  const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
   const { update: updateSession } = useSession();
 
   const [loginState, loginAction] = useActionState<LoginActionState, FormData>(
@@ -49,53 +48,32 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
       toast.error(mode === 'login' ? 'Invalid credentials!' : 'Failed to create account!');
     } else if (state.status === 'invalid_data') {
       toast.error('Failed validating your submission!');
-    } else if (state.status === 'success' && !isSuccessful && !hasShownSuccessToast) {
+    } else if (state.status === 'success') {
       setIsSuccessful(true);
-      setHasShownSuccessToast(true);
       updateSession();
       toast.success(mode === 'login' ? 'Signed in successfully!' : 'Account created successfully!');
       
       // Close modal and call onSuccess callback
       setTimeout(() => {
-        handleOpenChange(false);
+        onOpenChange(false);
         onSuccess?.();
         router.refresh();
       }, 500);
     }
-  }, [state.status, mode, updateSession, onOpenChange, onSuccess, router, isSuccessful, hasShownSuccessToast]);
+  }, [state.status, mode, updateSession, onOpenChange, onSuccess, router]);
 
   const handleSubmit = (formData: FormData) => {
     setEmail(formData.get('email') as string);
     formAction(formData);
   };
 
-  // Clean up state when modal closes
-  const handleOpenChange = (open: boolean) => {
-    onOpenChange(open);
-    if (!open) {
-      // Reset states when closing
-      setIsSuccessful(false);
-      setHasShownSuccessToast(false);
-      setEmail('');
-    }
-  };
-
   const toggleMode = () => {
     setMode(mode === 'login' ? 'register' : 'login');
     setIsSuccessful(false);
-    setHasShownSuccessToast(false);
   };
 
-  // Reset success state when modal is closed
-  useEffect(() => {
-    if (!open) {
-      setIsSuccessful(false);
-      setHasShownSuccessToast(false);
-    }
-  }, [open]);
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{mode === 'login' ? 'Sign In' : 'Sign Up'}</DialogTitle>

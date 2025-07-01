@@ -104,7 +104,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Toaster position="top-center" duration={4000} />
+          <Toaster position="top-center" />
           <Providers>{children}</Providers>
         </ThemeProvider>
       </body>
