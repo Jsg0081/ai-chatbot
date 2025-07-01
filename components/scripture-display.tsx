@@ -27,19 +27,28 @@ interface ScriptureData {
 }
 
 const TRANSLATIONS = [
+  { id: 'esv', name: 'English Standard Version' },
+  { id: 'asv', name: 'American Standard Version' },
+  { id: 'bbe', name: 'Bible in Basic English' },
+  { id: 'darby', name: 'Darby Translation' },
   { id: 'kjv', name: 'King James Version' },
   { id: 'web', name: 'World English Bible' },
-  { id: 'bbe', name: 'Bible in Basic English' },
-  { id: 'asv', name: 'American Standard Version' },
-  { id: 'darby', name: 'Darby Translation' },
   { id: 'ylt', name: "Young's Literal Translation" },
 ];
+
+// Add the following CSS class to style selected verses
+const selectedVerseStyle = {
+  color: '#32CD32', // Lime Green
+  backgroundColor: 'rgba(50, 205, 50, 0.15)', // Lime Green with 15% opacity
+  padding: '2px 4px',
+  borderRadius: '4px',
+};
 
 export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const [scripture, setScripture] = useState<ScriptureData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [translation, setTranslation] = useState('kjv');
+  const [translation, setTranslation] = useState('esv');
   const { addVerse, isVerseSelected } = useVerse();
 
   useEffect(() => {
@@ -48,10 +57,19 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
       setError(null);
 
       try {
-        // Using bible-api.com which is free and doesn't require authentication
-        const response = await fetch(
-          `https://bible-api.com/${encodeURIComponent(book)}+${chapter}?translation=${translation}`
-        );
+        let response;
+        
+        if (translation === 'esv') {
+          // Use our ESV API route
+          response = await fetch(
+            `/api/esv?book=${encodeURIComponent(book)}&chapter=${chapter}`
+          );
+        } else {
+          // Use bible-api.com for other translations
+          response = await fetch(
+            `https://bible-api.com/${encodeURIComponent(book)}+${chapter}?translation=${translation}`
+          );
+        }
 
         if (!response.ok) {
           throw new Error('Failed to fetch scripture');
@@ -166,17 +184,14 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                     key={verse.verse}
                     className={`
                       group cursor-pointer rounded px-1 -mx-1 transition-all
-                      ${isSelected 
-                        ? 'bg-primary/20 hover:bg-primary/30' 
-                        : 'hover:bg-primary/10'
-                      }
                     `}
+                    style={isSelected ? selectedVerseStyle : undefined}
                     onClick={() => handleVerseClick(verse)}
                   >
                     <sup className={`
                       text-xs mr-1 font-bold transition-colors
                       ${isSelected 
-                        ? 'text-primary' 
+                        ? 'text-green-700' 
                         : 'text-primary group-hover:text-primary/80'
                       }
                     `}>
@@ -184,10 +199,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                     </sup>
                     <span className={`
                       transition-colors
-                      ${isSelected 
-                        ? 'text-foreground' 
-                        : 'text-foreground/90 group-hover:text-foreground'
-                      }
+                      ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
                     `}>
                       {verse.text}
                     </span>

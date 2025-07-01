@@ -3,6 +3,7 @@ import React, { memo } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './code-block';
+import { BibleVerseParser } from './bible-verse-tooltip';
 
 const components: Partial<Components> = {
   // @ts-expect-error
@@ -22,7 +23,16 @@ const components: Partial<Components> = {
         return <>{children}</>;
       }
     }
-    return <p className="mb-4">{children}</p>;
+    
+    // Process text content for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
+    return <p className="mb-4">{processedChildren}</p>;
   },
   ol: ({ node, children, ...props }) => {
     return (
@@ -32,9 +42,17 @@ const components: Partial<Components> = {
     );
   },
   li: ({ node, children, ...props }) => {
+    // Process text content in list items for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <li className="py-1" {...props}>
-        {children}
+        {processedChildren}
       </li>
     );
   },
@@ -46,9 +64,17 @@ const components: Partial<Components> = {
     );
   },
   strong: ({ node, children, ...props }) => {
+    // Process text content in bold text for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <span className="font-semibold" {...props}>
-        {children}
+        {processedChildren}
       </span>
     );
   },
@@ -66,44 +92,92 @@ const components: Partial<Components> = {
     );
   },
   h1: ({ node, children, ...props }) => {
+    // Process text content in headings for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <h1 className="text-3xl font-semibold mt-6 mb-2" {...props}>
-        {children}
+        {processedChildren}
       </h1>
     );
   },
   h2: ({ node, children, ...props }) => {
+    // Process text content in headings for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <h2 className="text-2xl font-semibold mt-6 mb-2" {...props}>
-        {children}
+        {processedChildren}
       </h2>
     );
   },
   h3: ({ node, children, ...props }) => {
+    // Process text content in headings for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <h3 className="text-xl font-semibold mt-6 mb-2" {...props}>
-        {children}
+        {processedChildren}
       </h3>
     );
   },
   h4: ({ node, children, ...props }) => {
+    // Process text content in headings for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <h4 className="text-lg font-semibold mt-6 mb-2" {...props}>
-        {children}
+        {processedChildren}
       </h4>
     );
   },
   h5: ({ node, children, ...props }) => {
+    // Process text content in headings for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <h5 className="text-base font-semibold mt-6 mb-2" {...props}>
-        {children}
+        {processedChildren}
       </h5>
     );
   },
   h6: ({ node, children, ...props }) => {
+    // Process text content in headings for Bible verse references
+    const processedChildren = React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <BibleVerseParser>{child}</BibleVerseParser>;
+      }
+      return child;
+    });
+    
     return (
       <h6 className="text-sm font-semibold mt-6 mb-2" {...props}>
-        {children}
+        {processedChildren}
       </h6>
     );
   },

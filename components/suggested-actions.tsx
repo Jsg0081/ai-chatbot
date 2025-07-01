@@ -19,25 +19,25 @@ function PureSuggestedActions({
 }: SuggestedActionsProps) {
   const suggestedActions = [
     {
-      title: 'What are the advantages',
-      label: 'of using Next.js?',
-      action: 'What are the advantages of using Next.js?',
+      title: 'Explore biblical themes',
+      label: 'such as grace, redemption, and prophecy',
+      action: 'Help me explore biblical themes such as grace, redemption, and prophecy',
     },
     {
-      title: 'Write code to',
-      label: `demonstrate djikstra's algorithm`,
-      action: `Write code to demonstrate djikstra's algorithm`,
+      title: 'Discuss biblical scholars',
+      label: 'and their interpretations of scripture',
+      action: 'Discuss the interpretations of scripture by renowned biblical scholars',
     },
     {
-      title: 'Help me write an essay',
-      label: `about silicon valley`,
-      action: `Help me write an essay about silicon valley`,
+      title: 'Plan a Bible study',
+      label: 'focusing on the teachings of Jesus',
+      action: 'Plan a Bible study focusing on the teachings of Jesus',
     },
     {
-      title: 'What is the weather',
-      label: 'in San Francisco?',
-      action: 'What is the weather in San Francisco?',
-    },
+      title: 'Analyze biblical texts',
+      label: 'for deeper understanding and insight',
+      action: 'Analyze biblical texts for deeper understanding and insight',
+    }
   ];
 
   return (

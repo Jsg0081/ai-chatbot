@@ -86,6 +86,49 @@ export function getTrailingMessageId({
   return trailingMessage.id;
 }
 
-export function sanitizeText(text: string) {
-  return text.replace('<has_function_call>', '');
+export function sanitizeText(text: string): string {
+  return text.trim();
+}
+
+export function truncateVerseReferences(text: string): { displayText: string; hasVerses: boolean } {
+  // Pattern to match Bible verse references like [Book Chapter:Verse] "text"
+  const versePattern = /\[([^\]]+)\s+(\d+):(\d+)\]\s*"([^"]+)"/g;
+  
+  const verses: string[] = [];
+  let lastIndex = 0;
+  let match;
+  
+  // Find all verse references
+  while ((match = versePattern.exec(text)) !== null) {
+    if (match.index === lastIndex) {
+      verses.push(`${match[1]} ${match[2]}:${match[3]}`);
+      lastIndex = versePattern.lastIndex;
+    }
+  }
+  
+  // If no verses found, return original text
+  if (verses.length === 0) {
+    return { displayText: text, hasVerses: false };
+  }
+  
+  // Extract the user's actual message (text after all verse references)
+  const userMessage = text.substring(lastIndex).trim();
+  
+  // Create truncated display text
+  let displayText = '';
+  
+  if (verses.length === 1) {
+    displayText = `📖 ${verses[0]}`;
+  } else if (verses.length <= 3) {
+    displayText = `📖 ${verses.join(', ')}`;
+  } else {
+    displayText = `📖 ${verses.slice(0, 2).join(', ')} + ${verses.length - 2} more`;
+  }
+  
+  // Add the user's message if it exists
+  if (userMessage) {
+    displayText += `\n\n${userMessage}`;
+  }
+  
+  return { displayText, hasVerses: true };
 }

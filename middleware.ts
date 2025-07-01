@@ -17,6 +17,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow public access to ESV API
+  if (pathname.startsWith('/api/esv')) {
+    return NextResponse.next();
+  }
+
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,

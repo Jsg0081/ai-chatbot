@@ -12,7 +12,7 @@ import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
 import { Weather } from './weather';
 import equal from 'fast-deep-equal';
-import { cn, sanitizeText } from '@/lib/utils';
+import { cn, sanitizeText, truncateVerseReferences } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
@@ -103,6 +103,12 @@ const PurePreviewMessage = ({
 
               if (type === 'text') {
                 if (mode === 'view') {
+                  // Check if this is a user message with verse references
+                  const isUserMessage = message.role === 'user';
+                  const { displayText, hasVerses } = isUserMessage 
+                    ? truncateVerseReferences(part.text)
+                    : { displayText: part.text, hasVerses: false };
+                  
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
                       {message.role === 'user' && !isReadonly && (
@@ -126,11 +132,17 @@ const PurePreviewMessage = ({
                       <div
                         data-testid="message-content"
                         className={cn('flex flex-col gap-4', {
-                          'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
+                          'text-white px-3 py-2 rounded-xl':
                             message.role === 'user',
                         })}
+                        style={message.role === 'user' ? { backgroundColor: '#2F2F2F' } : undefined}
                       >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                        {hasVerses && isUserMessage && (
+                          <div className="text-xs text-green-400 font-medium">
+                            Selected verses included
+                          </div>
+                        )}
+                        <Markdown>{sanitizeText(displayText)}</Markdown>
                       </div>
                     </div>
                   );
