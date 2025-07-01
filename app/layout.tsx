@@ -8,7 +8,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://biblespark.app'),
-  title: 'Bible Spark - Learn the Word',
+  title: 'Bible Spark - Ignite the Word',
   description: 'Bible Spark is a tool that helps you study the Word of God.',
   icons: {
     icon: '/favicon.ico',
