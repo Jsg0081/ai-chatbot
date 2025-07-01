@@ -36,18 +36,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, content, chatId } = body;
+    const { id, title, content, chatId } = body;
 
-    const id = generateUUID();
+    // Use provided ID or generate a new one
+    const noteId = id || generateUUID();
+    
     await saveNote({
-      id,
+      id: noteId,
       title: title || 'New Note',
       content: content || '',
       userId: session.user.id,
       chatId,
     });
 
-    return NextResponse.json({ id, success: true });
+    return NextResponse.json({ id: noteId, success: true });
   } catch (error) {
     console.error('Error saving note:', error);
     return NextResponse.json(

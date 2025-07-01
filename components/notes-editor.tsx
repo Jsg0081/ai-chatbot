@@ -230,13 +230,57 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     }
   }, [noteId]);
 
+  // Set up global handler for note selection from sidebar
+  useEffect(() => {
+    const handleNoteSelect = (noteId: string) => {
+      setCurrentNoteId(noteId);
+      onNoteIdChange?.(noteId);
+    };
+
+    // Make it available globally
+    (window as any).handleNoteSelect = handleNoteSelect;
+
+    return () => {
+      delete (window as any).handleNoteSelect;
+    };
+  }, [onNoteIdChange]);
+
   // Load current note from API on mount or when currentNoteId changes
   useEffect(() => {
-    if (currentNoteId && session?.user?.id) {
-      // For now, we'll skip loading individual notes since we're creating new ones
-      // In a full implementation, you'd load the note from the API here
+    if (currentNoteId && session?.user?.id && session.user.type !== 'guest') {
+      loadNote(currentNoteId);
     }
   }, [currentNoteId, session]);
+
+  // Load a specific note
+  const loadNote = async (noteId: string) => {
+    try {
+      const response = await fetch('/api/notes');
+      if (!response.ok) {
+        throw new Error('Failed to fetch notes');
+      }
+      
+      const notes = await response.json();
+      const note = notes.find((n: Note) => n.id === noteId);
+      
+      if (note) {
+        setTitle(note.title || '');
+        setContent(note.content || '');
+        setIsNoteSaved(true);
+        setHasUserInteracted(true);
+        
+        if (editor && note.content) {
+          editor.commands.setContent(note.content);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading note:', error);
+      toast.error('Failed to load note');
+    }
+  };
+
+  // Track if this note has been saved to the database
+  const [isNoteSaved, setIsNoteSaved] = useState(false);
 
   // Save note to API
   const saveNote = async () => {
@@ -251,7 +295,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
 
     try {
       const response = await fetch('/api/notes', {
-        method: currentNoteId ? 'PUT' : 'POST',
+        method: isNoteSaved ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -265,6 +309,19 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
 
       if (!response.ok) {
         throw new Error('Failed to save note');
+      }
+
+      // If this was a POST (new note), we might need to handle the response
+      const result = await response.json();
+      
+      // Mark as saved after first successful save
+      if (!isNoteSaved) {
+        setIsNoteSaved(true);
+        // If the server returned a different ID, update it
+        if (result.id && result.id !== currentNoteId) {
+          setCurrentNoteId(result.id);
+          onNoteIdChange?.(result.id);
+        }
       }
 
       setLastSaved(new Date());
@@ -309,6 +366,7 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     setContent('');
     setTitle('');
     setHasUserInteracted(false);
+    setIsNoteSaved(false);
     if (editor) {
       editor.commands.clearContent();
     }
