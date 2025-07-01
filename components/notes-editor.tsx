@@ -1,204 +1,505 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Save, FileText, Bold, Italic, List, ListOrdered } from 'lucide-react';
+import { FileText, Bold, Italic, List, ListOrdered, Plus } from 'lucide-react';
 import { toast } from '@/components/toast';
 import { cn } from '@/lib/utils';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { generateUUID } from '@/lib/utils';
+import { BibleMention } from '@/lib/editor/bible-mention';
+import { BibleMentionList, getBibleSuggestions } from '@/components/editor/bible-mention-list';
+import tippy, { Instance } from 'tippy.js';
+import { ReactRenderer } from '@tiptap/react';
+import 'tippy.js/dist/tippy.css';
 
 interface NotesEditorProps {
   chatId?: string;
+  noteId?: string;
+  onNoteIdChange?: (noteId: string) => void;
 }
 
-export function NotesEditor({ chatId }: NotesEditorProps) {
-  const [content, setContent] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+  chatId?: string;
+}
+
+export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [content, setContent] = useState('');
+  const [title, setTitle] = useState('');
+  const [currentNoteId, setCurrentNoteId] = useState<string | null>(noteId || null);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  // Load notes from localStorage on mount
-  useEffect(() => {
-    const storageKey = chatId ? `notes-${chatId}` : 'notes-global';
-    const savedNotes = localStorage.getItem(storageKey);
-    if (savedNotes) {
-      setContent(savedNotes);
-    }
-  }, [chatId]);
+  // Initialize Tiptap editor
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: 'list-disc pl-5 my-2',
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: 'list-decimal pl-5 my-2',
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: 'mb-1',
+          },
+        },
+        paragraph: {
+          HTMLAttributes: {
+            class: 'mb-2',
+          },
+        },
+      }),
+      BibleMention.configure({
+        HTMLAttributes: {
+          class: 'bible-mention',
+        },
+        suggestion: {
+          items: ({ query }: { query: string }) => {
+            console.log('Bible mention triggered with query:', query);
+            return getBibleSuggestions(query);
+          },
+          allowSpaces: true,
+          char: '@',
+          startOfLine: false,
+          render: () => {
+            let component: ReactRenderer | null = null;
+            let popup: Instance[] | null = null;
 
-  // Auto-save functionality
-  useEffect(() => {
-    const autoSaveTimer = setTimeout(() => {
-      if (content) {
-        saveNotes(true);
-      }
-    }, 2000); // Auto-save after 2 seconds of inactivity
+            return {
+              onStart: (props: any) => {
+                console.log('Bible mention popup starting', props);
+                component = new ReactRenderer(BibleMentionList, {
+                  props,
+                  editor: props.editor,
+                });
 
-    return () => clearTimeout(autoSaveTimer);
-  }, [content]);
+                if (!props.clientRect) {
+                  return;
+                }
 
-  const saveNotes = (isAutoSave = false) => {
-    setIsSaving(true);
-    const storageKey = chatId ? `notes-${chatId}` : 'notes-global';
-    
-    try {
-      localStorage.setItem(storageKey, content);
-      setLastSaved(new Date());
+                // @ts-ignore
+                popup = tippy('body', {
+                  getReferenceClientRect: props.clientRect,
+                  appendTo: () => document.body,
+                  content: component.element,
+                  showOnCreate: true,
+                  interactive: true,
+                  trigger: 'manual',
+                  placement: 'bottom-start',
+                  theme: 'light',
+                });
+              },
+
+              onUpdate(props: any) {
+                component?.updateProps(props);
+
+                if (!props.clientRect) {
+                  return;
+                }
+
+                popup?.[0]?.setProps({
+                  getReferenceClientRect: props.clientRect,
+                });
+              },
+
+              onKeyDown(props: any) {
+                if (props.event.key === 'Escape') {
+                  popup?.[0]?.hide();
+                  return true;
+                }
+
+                // @ts-ignore
+                return component?.ref?.onKeyDown(props);
+              },
+
+              onExit() {
+                popup?.[0]?.destroy();
+                component?.destroy();
+              },
+            };
+          },
+        },
+      }),
+    ],
+    content: content,
+    immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        class: cn(
+          'w-full h-full p-3 text-sm rounded-md overflow-auto',
+          'bg-background focus:outline-none',
+          'min-h-[200px]',
+          // Prose-like styles for better typography
+          'prose prose-sm max-w-none',
+          'prose-p:my-2',
+          'prose-ul:list-disc prose-ul:pl-5',
+          'prose-ol:list-decimal prose-ol:pl-5',
+          'prose-li:my-0',
+          'dark:prose-invert'
+        ),
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const newContent = editor.getHTML();
+      setContent(newContent);
       
-      if (!isAutoSave) {
-        toast({ type: 'success', description: 'Notes saved successfully' });
+      // Mark that user has interacted if they've typed something
+      if (newContent && newContent !== '<p></p>' && !hasUserInteracted) {
+        setHasUserInteracted(true);
       }
-    } catch (error) {
-      toast({ type: 'error', description: 'Failed to save notes' });
-      console.error('Error saving notes:', error);
-    } finally {
-      setIsSaving(false);
+    },
+    onCreate: ({ editor }) => {
+      console.log('Editor created successfully');
+      // Test if suggestion is working
+      setTimeout(() => {
+        console.log('Editor extensions:', editor.extensionManager.extensions.map(e => e.name));
+        const bibleMentionExt = editor.extensionManager.extensions.find(e => e.name === 'bibleMention');
+        console.log('Bible mention extension:', bibleMentionExt);
+        console.log('Bible mention options:', bibleMentionExt?.options);
+      }, 100);
+    },
+    onSelectionUpdate: ({ editor }) => {
+      // Log when @ is typed
+      const { from } = editor.state.selection;
+      const char = editor.state.doc.textBetween(Math.max(0, from - 1), from);
+      if (char === '@') {
+        console.log('@ character detected at position:', from);
+      }
+    },
+  });
+
+  // Test editor functionality after mount
+  useEffect(() => {
+    if (editor) {
+      console.log('Editor is ready, testing @ mention...');
+      // Focus the editor
+      editor.commands.focus();
+      
+      // Log all plugins
+      const plugins = editor.view.state.plugins;
+      console.log('Editor plugins count:', plugins.length);
+      
+      // Check extensions instead
+      const extensions = editor.extensionManager.extensions;
+      console.log('Extensions:', extensions.map(ext => ext.name));
+      
+      // Find bible mention extension
+      const bibleMentionExt = extensions.find(ext => ext.name === 'bibleMention');
+      console.log('Bible mention extension found:', !!bibleMentionExt);
+    }
+  }, [editor]);
+
+  // Update currentNoteId when noteId prop changes
+  useEffect(() => {
+    if (noteId && noteId !== currentNoteId) {
+      setCurrentNoteId(noteId);
+    }
+  }, [noteId]);
+
+  // Load current note from localStorage on mount or when currentNoteId changes
+  useEffect(() => {
+    if (currentNoteId && typeof window !== 'undefined') {
+      const savedNote = localStorage.getItem(`note-${currentNoteId}`);
+      if (savedNote) {
+        try {
+          const note: Note = JSON.parse(savedNote);
+          setContent(note.content || '');
+          setTitle(note.title || '');
+          if (editor && note.content) {
+            editor.commands.setContent(note.content);
+          }
+          setHasUserInteracted(true); // Mark as interacted if loading existing note
+        } catch (error) {
+          console.error('Error loading note:', error);
+        }
+      }
+    }
+  }, [currentNoteId, editor]);
+
+  // Save note to localStorage
+  const saveNote = () => {
+    if (!currentNoteId || !hasUserInteracted) return;
+    
+    if (typeof window !== 'undefined') {
+      const note: Note = {
+        id: currentNoteId,
+        title: title || 'New Note',
+        content,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        chatId,
+      };
+
+      // Save the note
+      localStorage.setItem(`note-${currentNoteId}`, JSON.stringify(note));
+
+      // Update the notes list
+      const notesListKey = 'notes-list';
+      const notesList = localStorage.getItem(notesListKey);
+      let notes: string[] = notesList ? JSON.parse(notesList) : [];
+      
+      if (!notes.includes(currentNoteId)) {
+        notes.unshift(currentNoteId);
+        localStorage.setItem(notesListKey, JSON.stringify(notes));
+      }
+
+      setLastSaved(new Date());
+      setIsAutoSaving(false);
+
+      // Notify sidebar to refresh
+      window.dispatchEvent(new Event('notes-updated'));
     }
   };
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+  // Auto-save content after delay
+  useEffect(() => {
+    if (!hasUserInteracted || !currentNoteId) return;
+    
+    setIsAutoSaving(true);
+    const timer = setTimeout(() => {
+      saveNote();
+    }, 1000); // Save after 1 second of no changes
+
+    return () => clearTimeout(timer);
+  }, [content, currentNoteId, hasUserInteracted]);
+
+  // Auto-save title after delay
+  useEffect(() => {
+    if (!hasUserInteracted || !currentNoteId || !title) return;
+    
+    setIsAutoSaving(true);
+    const timer = setTimeout(() => {
+      saveNote();
+    }, 500); // Save title faster
+
+    return () => clearTimeout(timer);
+  }, [title, currentNoteId, hasUserInteracted]);
+
+  // Create new note
+  const createNewNote = () => {
+    const newId = generateUUID();
+    setCurrentNoteId(newId);
+    setContent('');
+    setTitle('');
+    setHasUserInteracted(false);
+    if (editor) {
+      editor.commands.clearContent();
+    }
+    onNoteIdChange?.(newId);
   };
 
-  // Format text helper functions
-  const insertFormatting = (prefix: string, suffix: string = '') => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end);
-    const newText = content.substring(0, start) + prefix + selectedText + suffix + content.substring(end);
-    
-    setContent(newText);
-    
-    // Restore focus and selection
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
+  // Handle title change
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+    }
   };
 
-  const insertList = (ordered: boolean = false) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const lineStart = content.lastIndexOf('\n', start - 1) + 1;
-    const prefix = ordered ? '1. ' : '• ';
-    
-    const newText = content.substring(0, lineStart) + prefix + content.substring(lineStart);
-    setContent(newText);
-    
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(lineStart + prefix.length, lineStart + prefix.length);
-    }, 0);
+  // Handle title editing
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setIsEditingTitle(false);
+    }
   };
+
+  // Create note ID when user starts interacting
+  useEffect(() => {
+    if (hasUserInteracted && !currentNoteId) {
+      const newId = generateUUID();
+      setCurrentNoteId(newId);
+      onNoteIdChange?.(newId);
+    }
+  }, [hasUserInteracted, currentNoteId, onNoteIdChange]);
+
+  // Handle drag and drop
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const verseData = e.dataTransfer.getData('text/plain');
+    if (verseData && editor) {
+      // Mark as interacted when dropping content
+      if (!hasUserInteracted) {
+        setHasUserInteracted(true);
+      }
+      
+      // Insert the dropped verse at cursor position or at the end
+      editor.chain().focus().insertContent(verseData + '\n\n').run();
+    }
+  };
+
+  if (!editor) {
+    return null;
+  }
 
   return (
-    <Card className="h-full flex flex-col border-0 shadow-none">
-      <CardHeader className="pb-3 px-4 flex-shrink-0">
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-medium flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Notes
-          </CardTitle>
+          <div className="flex items-center gap-2 flex-1">
+            <FileText className="h-5 w-5 text-muted-foreground" />
+            {isEditingTitle ? (
+              <input
+                type="text"
+                value={title}
+                onChange={handleTitleChange}
+                onKeyDown={handleTitleKeyDown}
+                className="text-lg font-semibold bg-transparent border-none outline-none focus:ring-0 p-0 flex-1"
+                autoFocus
+                placeholder="Enter note title..."
+              />
+            ) : (
+              <h3
+                className="text-lg font-semibold cursor-text hover:bg-muted/50 px-2 py-1 rounded -mx-2 -my-1 transition-colors flex-1"
+                onClick={() => setIsEditingTitle(true)}
+                title="Click to edit title"
+              >
+                {title || 'New Note'}
+              </h3>
+            )}
+          </div>
           <div className="flex items-center gap-2">
-            {lastSaved && (
+            {isAutoSaving && (
+              <span className="text-xs text-muted-foreground">
+                Saving...
+              </span>
+            )}
+            {lastSaved && !isAutoSaving && (
               <span className="text-xs text-muted-foreground">
                 Saved {lastSaved.toLocaleTimeString()}
               </span>
             )}
             <Button
+              onClick={createNewNote}
               size="sm"
               variant="outline"
-              onClick={() => saveNotes(false)}
-              disabled={isSaving}
-              className="h-8"
+              title="Create new note"
             >
-              <Save className="h-3 w-3 mr-1" />
-              Save
+              <Plus className="h-4 w-4" />
             </Button>
           </div>
         </div>
+        
+        {/* Formatting Toolbar */}
+        <div className="flex items-center gap-1 pt-2 border-t">
+          <Button
+            onClick={() => {
+              console.log('Testing @ insertion');
+              editor.chain().focus().insertContent('@').run();
+            }}
+            size="sm"
+            variant="ghost"
+            className="h-8 px-2 text-xs"
+            title="Test @ mention"
+          >
+            @
+          </Button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <Button
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            disabled={!editor.can().chain().focus().toggleBold().run()}
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive('bold') && "bg-muted"
+            )}
+            title="Bold (Ctrl+B)"
+          >
+            <Bold className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            disabled={!editor.can().chain().focus().toggleItalic().run()}
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive('italic') && "bg-muted"
+            )}
+            title="Italic (Ctrl+I)"
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <Button
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive('bulletList') && "bg-muted"
+            )}
+            title="Bullet List"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive('orderedList') && "bg-muted"
+            )}
+            title="Numbered List"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       
-      {/* Formatting toolbar */}
-      <div className="px-4 pb-2 flex items-center gap-1 border-b">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 w-8 p-0"
-          onClick={() => insertFormatting('**', '**')}
-          title="Bold (Ctrl+B)"
+      <CardContent className="flex-1 p-0">
+        <div 
+          className={cn(
+            "relative h-full transition-colors",
+            isDragOver && "bg-primary/5 ring-2 ring-primary/20 ring-inset"
+          )}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 w-8 p-0"
-          onClick={() => insertFormatting('*', '*')}
-          title="Italic (Ctrl+I)"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 w-8 p-0"
-          onClick={() => insertList(false)}
-          title="Bullet list"
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 w-8 p-0"
-          onClick={() => insertList(true)}
-          title="Numbered list"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <CardContent className="flex-1 px-4 pb-4 pt-3 overflow-hidden">
-        <div className="h-full relative">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={handleContentChange}
-            placeholder="Start typing your notes here...&#10;&#10;Use **text** for bold, *text* for italic"
-            className={cn(
-              "w-full h-full p-3 text-sm resize-none border rounded-md",
-              "bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              "font-mono"
-            )}
-            style={{ minHeight: '100%' }}
-            onKeyDown={(e) => {
-              // Add keyboard shortcuts
-              if (e.ctrlKey || e.metaKey) {
-                if (e.key === 'b') {
-                  e.preventDefault();
-                  insertFormatting('**', '**');
-                } else if (e.key === 'i') {
-                  e.preventDefault();
-                  insertFormatting('*', '*');
-                } else if (e.key === 's') {
-                  e.preventDefault();
-                  saveNotes(false);
-                }
-              }
-            }}
-          />
-          {isSaving && (
-            <div className="absolute top-2 right-2 text-xs text-muted-foreground">
-              Saving...
+          {(!content || content === '<p></p>') && (
+            <div className="absolute top-3 left-3 text-sm text-muted-foreground pointer-events-none">
+              Start typing your notes...
             </div>
           )}
+          {isDragOver && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div className="bg-primary/90 text-primary-foreground px-4 py-2 rounded-md shadow-lg">
+                Drop verses here
+              </div>
+            </div>
+          )}
+          <EditorContent editor={editor} className="h-full" />
         </div>
       </CardContent>
     </Card>

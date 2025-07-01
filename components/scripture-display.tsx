@@ -42,6 +42,7 @@ const selectedVerseStyle = {
   backgroundColor: 'rgba(128, 255, 219, 0.10)', // Lime Green with 15% opacity
   padding: '2px 4px',
   borderRadius: '4px',
+  cursor: 'grab',
 };
 
 export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
@@ -49,7 +50,13 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [translation, setTranslation] = useState('esv');
-  const { addVerse, isVerseSelected } = useVerse();
+  const [isDragging, setIsDragging] = useState(false);
+  const { addVerse, isVerseSelected, selectedVerses } = useVerse();
+
+  // Calculate selected verses for current chapter
+  const selectedVersesInChapter = selectedVerses.filter(
+    v => v.book === book && v.chapter === chapter
+  );
 
   useEffect(() => {
     const fetchScripture = async () => {
@@ -95,6 +102,32 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
       text: verse.text,
       translation: scripture?.translation_name || 'King James Version',
     });
+  };
+
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsDragging(true);
+    
+    // Get all selected verses
+    const versesToDrag = selectedVerses.filter(v => v.book === book && v.chapter === chapter);
+    
+    if (versesToDrag.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    
+    // Format the verses for drag data
+    const formattedVerses = versesToDrag
+      .sort((a, b) => a.verse - b.verse)
+      .map(v => `[${v.book} ${v.chapter}:${v.verse}] "${v.text}"`)
+      .join('\n');
+    
+    e.dataTransfer.setData('text/plain', formattedVerses);
+    e.dataTransfer.setData('application/bible-verses', JSON.stringify(versesToDrag));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
   };
 
   if (loading) {
@@ -184,9 +217,15 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                     key={verse.verse}
                     className={`
                       group cursor-pointer rounded px-1 -mx-1 transition-all
+                      ${isSelected && isDragging ? 'opacity-50' : ''}
+                      ${isSelected ? 'cursor-grab active:cursor-grabbing' : ''}
                     `}
                     style={isSelected ? selectedVerseStyle : undefined}
                     onClick={() => handleVerseClick(verse)}
+                    draggable={isSelected}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    title={isSelected ? 'Drag to notes editor' : 'Click to select'}
                   >
                     <sup className={`
                       text-xs mr-1 font-bold transition-colors

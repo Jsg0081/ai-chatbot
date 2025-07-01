@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PlusIcon } from '@/components/icons';
 import { BibleBooks } from '@/components/bible-books';
 import { SidebarHistory } from '@/components/sidebar-history';
+import { SidebarNotesHistory } from '@/components/sidebar-notes-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,12 +21,21 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { useScripture } from '@/lib/scripture-context';
 
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
+  const { setScripture } = useScripture();
 
   const handleBookSelect = (book: string, chapter?: number) => {
+    // Update scripture context
+    if (chapter) {
+      setScripture(book, chapter);
+    } else {
+      setScripture(book, null);
+    }
+    
     // Create URL with book and optionally chapter
     const params = new URLSearchParams();
     params.set('book', book);
@@ -83,6 +93,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <BibleBooks onBookSelect={handleBookSelect} />
         <SidebarSeparator />
         <SidebarHistory user={user} />
+        <SidebarSeparator />
+        <SidebarNotesHistory />
       </SidebarContent>
       <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
     </Sidebar>

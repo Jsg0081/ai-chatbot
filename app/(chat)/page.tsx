@@ -2,14 +2,15 @@ import { cookies } from 'next/headers';
 import type { UIMessage } from 'ai';
 
 import { Chat } from '@/components/chat';
-import { ScriptureDisplay } from '@/components/scripture-display';
-import { NotesEditor } from '@/components/notes-editor';
+import { ScriptureDisplayWrapper } from '@/components/scripture-display-wrapper';
+import { NotesWrapper } from '@/components/notes-wrapper';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import { generateUUID } from '@/lib/utils';
 import { DataStreamHandler } from '@/components/data-stream-handler';
 import { auth } from '../(auth)/auth';
 import { redirect } from 'next/navigation';
 import { ResizablePanels } from '@/components/resizable-panels';
+import { ScriptureContextUpdater } from '@/components/scripture-context-updater';
 
 interface PageProps {
   searchParams: Promise<{ book?: string; chapter?: string }>;
@@ -78,36 +79,13 @@ export default async function Page({ searchParams }: PageProps) {
     />
   );
 
-  // Show scripture display when both book and chapter are selected
-  if (book && chapter) {
-    return (
-      <>
-        <div className="h-screen overflow-hidden">
-          <ResizablePanels
-            scriptureContent={<ScriptureDisplay book={book} chapter={parseInt(chapter)} />}
-            notesContent={<NotesEditor chatId={id} />}
-            chatContent={chatComponent}
-          />
-        </div>
-        <DataStreamHandler id={id} />
-      </>
-    );
-  }
-
-  // Default view - show notes and chat
   return (
     <>
+      {book && chapter && <ScriptureContextUpdater book={book} chapter={parseInt(chapter)} />}
       <div className="h-screen overflow-hidden">
         <ResizablePanels
-          scriptureContent={
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center space-y-2">
-                <p className="text-sm">Select a book and chapter from the sidebar</p>
-                <p className="text-xs">to view scripture here</p>
-              </div>
-            </div>
-          }
-          notesContent={<NotesEditor chatId={id} />}
+          scriptureContent={<ScriptureDisplayWrapper />}
+          notesContent={<NotesWrapper chatId={id} />}
           chatContent={chatComponent}
         />
       </div>

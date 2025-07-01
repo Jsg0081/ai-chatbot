@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { VerseProvider } from '@/lib/verse-context';
+import { ScriptureProvider } from '@/lib/scripture-context';
 import { auth } from '../(auth)/auth';
 import Script from 'next/script';
 
@@ -23,10 +24,12 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <VerseProvider>
-        <SidebarProvider defaultOpen={!isCollapsed}>
-          <AppSidebar user={session?.user} />
-          <SidebarInset className="h-screen max-h-screen overflow-hidden">{children}</SidebarInset>
-        </SidebarProvider>
+        <ScriptureProvider>
+          <SidebarProvider defaultOpen={!isCollapsed}>
+            <AppSidebar user={session?.user} />
+            <SidebarInset className="h-screen max-h-screen overflow-hidden">{children}</SidebarInset>
+          </SidebarProvider>
+        </ScriptureProvider>
       </VerseProvider>
     </>
   );

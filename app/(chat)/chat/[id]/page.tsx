@@ -3,6 +3,9 @@ import { notFound, redirect } from 'next/navigation';
 
 import { auth } from '@/app/(auth)/auth';
 import { Chat } from '@/components/chat';
+import { ScriptureDisplayWrapper } from '@/components/scripture-display-wrapper';
+import { NotesWrapper } from '@/components/notes-wrapper';
+import { ResizablePanels } from '@/components/resizable-panels';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { DataStreamHandler } from '@/components/data-stream-handler';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
@@ -54,34 +57,37 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get('chat-model');
 
-  if (!chatModelFromCookie) {
-    return (
-      <>
-        <Chat
-          id={chat.id}
-          initialMessages={convertToUIMessages(messagesFromDb)}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialVisibilityType={chat.visibility}
-          isReadonly={session?.user?.id !== chat.userId}
-          session={session}
-          autoResume={true}
-        />
-        <DataStreamHandler id={id} />
-      </>
-    );
-  }
+  const chatComponent = !chatModelFromCookie ? (
+    <Chat
+      id={chat.id}
+      initialMessages={convertToUIMessages(messagesFromDb)}
+      initialChatModel={DEFAULT_CHAT_MODEL}
+      initialVisibilityType={chat.visibility}
+      isReadonly={session?.user?.id !== chat.userId}
+      session={session}
+      autoResume={true}
+    />
+  ) : (
+    <Chat
+      id={chat.id}
+      initialMessages={convertToUIMessages(messagesFromDb)}
+      initialChatModel={chatModelFromCookie.value}
+      initialVisibilityType={chat.visibility}
+      isReadonly={session?.user?.id !== chat.userId}
+      session={session}
+      autoResume={true}
+    />
+  );
 
   return (
     <>
-      <Chat
-        id={chat.id}
-        initialMessages={convertToUIMessages(messagesFromDb)}
-        initialChatModel={chatModelFromCookie.value}
-        initialVisibilityType={chat.visibility}
-        isReadonly={session?.user?.id !== chat.userId}
-        session={session}
-        autoResume={true}
-      />
+      <div className="h-screen overflow-hidden">
+        <ResizablePanels
+          scriptureContent={<ScriptureDisplayWrapper />}
+          notesContent={<NotesWrapper chatId={id} />}
+          chatContent={chatComponent}
+        />
+      </div>
       <DataStreamHandler id={id} />
     </>
   );

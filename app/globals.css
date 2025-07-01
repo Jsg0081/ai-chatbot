@@ -58,6 +58,7 @@
         --sidebar-border: 220 13% 91%;
         --sidebar-ring: 217.2 91.2% 59.8%;
     }
+
     .dark {
         --background: 240 10% 3.9%;
         --foreground: 0 0% 98%;
@@ -132,7 +133,7 @@
     @apply bg-background dark:bg-zinc-800 outline-none selection:bg-zinc-900 !important;
 }
 
-.ͼo.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
+.ͼo.cm-focused>.cm-scroller>.cm-selectionLayer .cm-selectionBackground,
 .ͼo.cm-selectionBackground,
 .ͼo.cm-content::selection {
     @apply bg-zinc-200 dark:bg-zinc-900 !important;
@@ -161,4 +162,35 @@
 
 .suggestion-highlight {
     @apply bg-blue-200 hover:bg-blue-300 dark:hover:bg-blue-400/50 dark:text-blue-50 dark:bg-blue-500/40;
+}
+
+/* Bible Mention Styles */
+.bible-mention {
+    @apply text-primary underline decoration-dotted cursor-pointer hover:decoration-solid transition-all inline-flex items-center gap-1;
+}
+
+.ProseMirror .bible-mention {
+    @apply text-primary underline decoration-dotted cursor-pointer hover:decoration-solid transition-all;
+}
+
+/* Tippy.js styles for Bible mention dropdown */
+.tippy-box[data-theme~='light'] {
+    @apply bg-popover text-popover-foreground border shadow-md;
+}
+
+.tippy-box[data-theme~='dark'] {
+    @apply bg-popover text-popover-foreground border shadow-md;
+}
+
+.tippy-content {
+    @apply p-0;
+}
+
+/* Ensure tippy dropdown is visible */
+.tippy-box {
+    z-index: 9999 !important;
+}
+
+.tippy-box[data-placement^='bottom']>.tippy-arrow::before {
+    @apply border-b-popover;
 }
