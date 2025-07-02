@@ -14,6 +14,7 @@ const config: Config = {
         mono: ['var(--font-geist-mono)'],
       },
       screens: {
+        'xs': '475px',
         'toast-mobile': '600px',
       },
       borderRadius: {

@@ -14,6 +14,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { cn } from '@/lib/utils';
 
 interface ScriptureDisplayProps {
   book: string;
@@ -65,7 +66,18 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const { addVerse, isVerseSelected, selectedVerses } = useVerse();
   const [showSpotifyModal, setShowSpotifyModal] = useState(false);
   const [spotifySearchVerse, setSpotifySearchVerse] = useState<Verse | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // When the modal is closed, clear the verse data after a delay
   // to allow for the exit animation to complete.
   useEffect(() => {
@@ -310,22 +322,23 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   return (
     <>
       <Card className="h-full flex flex-col shadow-lg">
-        <div className="p-6 border-b bg-muted/30">
+        {/* Hide header on mobile - navigation is handled by the tab header */}
+        <div className={cn("p-4 sm:p-6 border-b bg-muted/30", isMobile && "hidden")}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-start gap-3">
-              <BookOpenIcon className="w-6 h-6 mt-1 text-muted-foreground" />
-              <div>
-                <h2 className="text-2xl font-bold">{scripture.reference}</h2>
-                <p className="text-sm text-muted-foreground mt-1">
+              <BookOpenIcon className="w-5 h-5 sm:w-6 sm:h-6 mt-1 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold break-words">{scripture.reference}</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                   {scripture.translation_name || 'King James Version'}
                 </p>
               </div>
             </div>
             <Select value={translation} onValueChange={setTranslation}>
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Select translation" />
               </SelectTrigger>
-              <SelectContent className="max-h-[400px]">
+              <SelectContent className="max-h-[50vh] sm:max-h-[400px]">
                 {loadingTranslations ? (
                   <div className="p-2 text-sm text-muted-foreground">Loading translations...</div>
                 ) : (
@@ -362,12 +375,51 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
           </div>
         </div>
         
-        <div className="flex-1 p-6 lg:p-8 overflow-auto bg-background">
+        {/* Add mobile translation selector */}
+        {isMobile && (
+          <div className="p-2 border-b bg-muted/30">
+            <Select value={translation} onValueChange={setTranslation}>
+              <SelectTrigger className="w-full h-8 text-sm">
+                <SelectValue placeholder="Select translation" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[50vh]">
+                {loadingTranslations ? (
+                  <div className="p-2 text-sm text-muted-foreground">Loading translations...</div>
+                ) : (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Popular</div>
+                    {DEFAULT_TRANSLATIONS.map((trans) => (
+                      <SelectItem key={trans.id} value={trans.id}>
+                        <span className="text-sm">{trans.name}</span>
+                      </SelectItem>
+                    ))}
+                    
+                    {translations.length > 0 && (
+                      <>
+                        <div className="my-1 h-px bg-border" />
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">More Translations</div>
+                        {translations
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((trans: any) => (
+                            <SelectItem key={trans.id} value={trans.id}>
+                              <span className="text-sm">{trans.name}</span>
+                            </SelectItem>
+                          ))}
+                      </>
+                    )}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto bg-background">
           <div className="max-w-3xl mx-auto">
             {paragraphs.map((paragraph, index) => (
               <p 
                 key={index} 
-                className={`mb-6 leading-relaxed text-base ${
+                className={`mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base ${
                   isPoetry ? 'pl-4 border-l-2 border-muted' : ''
                 }`}
               >
@@ -379,6 +431,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                         <span 
                           className={`
                             group cursor-pointer rounded px-1 -mx-1 transition-all
+                            touch-manipulation select-none
                             ${isSelected && isDragging ? 'opacity-50' : ''}
                             ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#80ffdb]/10 dark:text-[#80ffdb]' : ''}
                           `}
@@ -398,7 +451,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                           title={isSelected ? 'Drag to notes editor' : 'Click to select'}
                         >
                           <sup className={`
-                            text-xs mr-1 font-bold transition-colors
+                            text-[10px] sm:text-xs mr-1 font-bold transition-colors
                             ${isSelected 
                               ? 'text-cyan-950 dark:text-[#80ffdb]' 
                               : 'text-primary group-hover:text-primary/80'
@@ -407,7 +460,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                             {verse.verse}
                           </sup>
                           <span className={`
-                            transition-colors
+                            transition-colors text-sm sm:text-base
                             ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
                           `}>
                             {verse.text}
@@ -415,10 +468,10 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                           {verseIndex < paragraph.length - 1 && ' '}
                         </span>
                       </ContextMenuTrigger>
-                      <ContextMenuContent>
+                      <ContextMenuContent className="w-48">
                         <ContextMenuItem 
                           onClick={() => handleVerseClick(verse)}
-                          className="gap-2"
+                          className="gap-2 text-sm"
                         >
                           {isSelected ? 'Deselect' : 'Select'} Verse
                         </ContextMenuItem>
@@ -430,7 +483,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                             setSpotifySearchVerse(verse);
                             setShowSpotifyModal(true);
                           }}
-                          className="gap-2"
+                          className="gap-2 text-sm"
                         >
                           <Music className="h-4 w-4" />
                           Search on Spotify

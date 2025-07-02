@@ -67,6 +67,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const isMobile = width && width < 768;
   const { selectedVerses, clearVerses } = useVerse();
   const [showSpotifyModal, setShowSpotifyModal] = useState(false);
 
@@ -321,7 +322,7 @@ function PureMultimodalInput({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
-          className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg border border-border/50 overflow-hidden"
+          className="flex items-start gap-2 p-2 sm:p-3 bg-muted/50 rounded-lg border border-border/50 overflow-hidden mx-2 sm:mx-0"
         >
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -334,7 +335,7 @@ function PureMultimodalInput({
                 </span>
               )}
             </div>
-            <p className="text-sm line-clamp-2 text-cyan-950 dark:text-[#80ffdb] font-medium">
+            <p className="text-xs sm:text-sm line-clamp-2 text-cyan-950 dark:text-[#80ffdb] font-medium">
               {getFormattedVerses()}
             </p>
           </div>
@@ -342,71 +343,73 @@ function PureMultimodalInput({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 w-6 p-0"
+              className="h-8 w-8 p-0"
               onClick={() => setShowSpotifyModal(true)}
               title="Search Spotify for related content"
             >
-              <Music className="h-3 w-3" />
+              <Music className="h-4 w-4" />
             </Button>
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 w-6 p-0"
+              className="h-8 w-8 p-0"
               onClick={() => clearVerses()}
             >
-              <X className="h-3 w-3" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </motion.div>
       )}
 
-      <Textarea
-        data-testid="multimodal-input"
-        ref={textareaRef}
-        placeholder="Send a message..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
-          className,
-        )}
-        rows={2}
-        autoFocus
-        onKeyDown={(event) => {
-          if (
-            event.key === 'Enter' &&
-            !event.shiftKey &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
+      <div className="relative px-2 sm:px-0">
+        <Textarea
+          data-testid="multimodal-input"
+          ref={textareaRef}
+          placeholder="Send a message..."
+          value={input}
+          onChange={handleInput}
+          className={cx(
+            'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-12 sm:pb-10 dark:border-zinc-700',
+            className,
+          )}
+          rows={2}
+          autoFocus={!isMobile}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
 
-            if (status !== 'ready') {
-              toast.error('Please wait for the model to finish its response!');
-            } else {
-              submitForm();
+              if (status !== 'ready') {
+                toast.error('Please wait for the model to finish its response!');
+              } else {
+                submitForm();
+              }
             }
-          }
-        }}
-      />
-
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row items-center justify-start gap-2">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-        <ModelSelector
-          session={session}
-          selectedModelId={selectedModelId}
+          }}
         />
-      </div>
 
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
-          <StopButton stop={stop} setMessages={setMessages} />
-        ) : (
-          <SendButton
-            input={input}
-            submitForm={submitForm}
-            uploadQueue={uploadQueue}
+        <div className="absolute bottom-0 p-2 w-fit flex flex-row items-center justify-start gap-1 sm:gap-2">
+          <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+          <ModelSelector
+            session={session}
+            selectedModelId={selectedModelId}
           />
-        )}
+        </div>
+
+        <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
+          {status === 'submitted' ? (
+            <StopButton stop={stop} setMessages={setMessages} />
+          ) : (
+            <SendButton
+              input={input}
+              submitForm={submitForm}
+              uploadQueue={uploadQueue}
+            />
+          )}
+        </div>
       </div>
       
       <SpotifySearchModal 

@@ -6,9 +6,14 @@ import {
   PanelGroup,
   PanelResizeHandle,
 } from 'react-resizable-panels';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, BookOpen, FileText, MessageSquare, Menu, ChevronRight } from 'lucide-react';
 import { useWindowSize } from 'usehooks-ts';
 import { FloatingSidebarToggle } from './floating-sidebar-toggle';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { cn } from '@/lib/utils';
+import { useScripture } from '@/lib/scripture-context';
+import { Button } from './ui/button';
+import { useSidebar } from './ui/sidebar';
 
 interface ResizablePanelsProps {
   scriptureContent: ReactNode;
@@ -20,6 +25,9 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
   const { width } = useWindowSize();
   const isMobile = width && width < 768;
   const [savedLayout, setSavedLayout] = useState<number[]>([33, 33, 34]);
+  const [activeTab, setActiveTab] = useState<string>('chat');
+  const { book, chapter } = useScripture();
+  const { toggleSidebar } = useSidebar();
 
   // Load saved layout after mount to avoid hydration mismatch
   useEffect(() => {
@@ -36,6 +44,14 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
         // Keep default values on parse error
       }
     }
+    
+    // Load saved active tab for mobile
+    if (isMobile) {
+      const savedTab = localStorage.getItem('bible-mobile-active-tab');
+      if (savedTab && ['scripture', 'notes', 'chat'].includes(savedTab)) {
+        setActiveTab(savedTab);
+      }
+    }
   }, [isMobile]);
 
   // Save panel layout to localStorage
@@ -44,53 +60,95 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
     localStorage.setItem(key, JSON.stringify(sizes));
   };
 
-  // On mobile, stack vertically
+  // Save active tab for mobile
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    localStorage.setItem('bible-mobile-active-tab', value);
+  };
+
+  // On mobile, use tabs for better navigation
   if (isMobile) {
     return (
       <>
-        <FloatingSidebarToggle />
-        <div className="flex flex-col h-full w-full p-2 max-h-screen">
-          <PanelGroup direction="vertical" className="h-full" onLayout={onLayout}>
-            <Panel 
-              defaultSize={savedLayout[0]}
-              minSize={20}
-              maxSize={60}
-              className="min-h-[20vh]"
+        <FloatingSidebarToggle className="hidden" />
+        <div className="flex flex-col h-full w-full max-h-screen">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={handleTabChange}
+            className="flex flex-col h-full"
+          >
+            {/* Mobile header for Scripture tab */}
+            {activeTab === 'scripture' && (
+              <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                <div className="flex items-center justify-between p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSidebar}
+                    className="flex items-center gap-2"
+                  >
+                    <Menu className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {book && chapter ? `${book} ${chapter}` : 'Select Book'}
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <TabsList className="grid w-full grid-cols-3 sticky top-0 z-10 mx-0 rounded-none border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <TabsTrigger 
+                value="scripture" 
+                className="flex items-center gap-2 data-[state=active]:bg-muted"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden xs:inline">Scripture</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="notes"
+                className="flex items-center gap-2 data-[state=active]:bg-muted"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="hidden xs:inline">Notes</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="chat"
+                className="flex items-center gap-2 data-[state=active]:bg-muted"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden xs:inline">Chat</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent 
+              value="scripture" 
+              className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="h-full pb-2 overflow-y-auto ml-16">
+              <div className="h-full overflow-y-auto p-4 pb-20">
                 {scriptureContent}
               </div>
-            </Panel>
+            </TabsContent>
             
-            <PanelResizeHandle className="h-3 bg-transparent hover:bg-primary/10 transition-colors relative flex items-center justify-center cursor-row-resize">
-              <div className="absolute h-1 w-10 rounded-full bg-border" />
-            </PanelResizeHandle>
-            
-            <Panel 
-              defaultSize={savedLayout[1]}
-              minSize={20}
-              maxSize={60}
-              className="min-h-[20vh]"
+            <TabsContent 
+              value="notes"
+              className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="h-full py-2 overflow-hidden">
+              <div className="h-full overflow-hidden p-4">
                 {notesContent}
               </div>
-            </Panel>
+            </TabsContent>
             
-            <PanelResizeHandle className="h-3 bg-transparent hover:bg-primary/10 transition-colors relative flex items-center justify-center cursor-row-resize">
-              <div className="absolute h-1 w-10 rounded-full bg-border" />
-            </PanelResizeHandle>
-            
-            <Panel 
-              defaultSize={savedLayout[2]}
-              minSize={20}
-              className="min-h-[20vh]"
+            <TabsContent 
+              value="chat"
+              className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="h-full pt-2 overflow-hidden flex flex-col">
+              <div className="h-full overflow-hidden flex flex-col">
+                {activeTab === 'chat' && <FloatingSidebarToggle />}
                 {chatContent}
               </div>
-            </Panel>
-          </PanelGroup>
+            </TabsContent>
+          </Tabs>
         </div>
       </>
     );
