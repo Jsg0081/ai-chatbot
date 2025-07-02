@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDownIcon, LoaderIcon } from './icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Markdown } from './markdown';
@@ -15,6 +15,18 @@ export function MessageReasoning({
   reasoning,
 }: MessageReasoningProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  
+  // Automatically collapse when reasoning is complete (isLoading becomes false)
+  useEffect(() => {
+    if (!isLoading) {
+      // Add a small delay to allow users to see the transition
+      const timer = setTimeout(() => {
+        setIsExpanded(false);
+      }, 500); // 500ms delay
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
 
   const variants = {
     collapsed: {
@@ -51,7 +63,12 @@ export function MessageReasoning({
               setIsExpanded(!isExpanded);
             }}
           >
-            <ChevronDownIcon />
+            <motion.div
+              animate={{ rotate: isExpanded ? 0 : -90 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDownIcon />
+            </motion.div>
           </button>
         </div>
       )}
