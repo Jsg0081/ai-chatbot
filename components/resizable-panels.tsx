@@ -71,61 +71,70 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
     return (
       <>
         <FloatingSidebarToggle className="hidden" />
-        <div className="flex flex-col h-full w-full max-h-screen">
+        <div className="flex flex-col h-screen w-full overflow-hidden">
           <Tabs 
             value={activeTab} 
             onValueChange={handleTabChange}
             className="flex flex-col h-full"
           >
-            {/* Mobile header for Scripture tab */}
-            {activeTab === 'scripture' && (
-              <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-                <div className="flex items-center justify-between p-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleSidebar}
-                    className="flex items-center gap-2"
-                  >
-                    <Menu className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      {book && chapter ? `${book} ${chapter}` : 'Select Book'}
-                    </span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+            {/* Fixed header container */}
+            <div className="fixed top-0 left-0 right-0 z-30 bg-background">
+              {/* Mobile header for Scripture tab */}
+              {activeTab === 'scripture' && (
+                <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                  <div className="flex items-center justify-between p-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleSidebar}
+                      className="flex items-center gap-2"
+                    >
+                      <Menu className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {book && chapter ? `${book} ${chapter}` : 'Select Book'}
+                      </span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              
+              <TabsList className="grid w-full grid-cols-3 mx-0 rounded-none border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <TabsTrigger 
+                  value="scripture" 
+                  className="flex items-center gap-2 data-[state=active]:bg-muted"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span className="hidden xs:inline">Scripture</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="notes"
+                  className="flex items-center gap-2 data-[state=active]:bg-muted"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden xs:inline">Notes</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="chat"
+                  className="flex items-center gap-2 data-[state=active]:bg-muted"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden xs:inline">Chat</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
             
-            <TabsList className="grid w-full grid-cols-3 sticky top-0 z-10 mx-0 rounded-none border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <TabsTrigger 
-                value="scripture" 
-                className="flex items-center gap-2 data-[state=active]:bg-muted"
-              >
-                <BookOpen className="h-4 w-4" />
-                <span className="hidden xs:inline">Scripture</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="notes"
-                className="flex items-center gap-2 data-[state=active]:bg-muted"
-              >
-                <FileText className="h-4 w-4" />
-                <span className="hidden xs:inline">Notes</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="chat"
-                className="flex items-center gap-2 data-[state=active]:bg-muted"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span className="hidden xs:inline">Chat</span>
-              </TabsTrigger>
-            </TabsList>
+            {/* Spacer to push content below fixed header */}
+            <div className={cn(
+              "flex-shrink-0",
+              activeTab === 'scripture' ? 'h-[88px]' : 'h-[48px]'
+            )} />
             
             <TabsContent 
               value="scripture" 
               className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="h-full overflow-y-auto p-4 pb-20">
+              <div className="h-full overflow-y-auto">
                 {scriptureContent}
               </div>
             </TabsContent>
@@ -134,7 +143,7 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
               value="notes"
               className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="h-full overflow-hidden p-4">
+              <div className="h-full overflow-hidden">
                 {notesContent}
               </div>
             </TabsContent>

@@ -414,7 +414,10 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
           </div>
         )}
         
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto bg-background">
+        <div className={cn(
+          "flex-1 overflow-auto bg-background",
+          isMobile ? "p-4 pb-20" : "p-4 sm:p-6 lg:p-8"
+        )}>
           <div className="max-w-3xl mx-auto">
             {paragraphs.map((paragraph, index) => (
               <p 
