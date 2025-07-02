@@ -15,6 +15,8 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { cn } from '@/lib/utils';
+import { OnboardingTooltip } from './onboarding-tooltip';
+import { useSession } from 'next-auth/react';
 
 interface ScriptureDisplayProps {
   book: string;
@@ -67,6 +69,9 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const [showSpotifyModal, setShowSpotifyModal] = useState(false);
   const [spotifySearchVerse, setSpotifySearchVerse] = useState<Verse | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const session = useSession();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasShownOnboarding, setHasShownOnboarding] = useState(false);
   
   // Check if mobile
   useEffect(() => {
@@ -77,6 +82,41 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Onboarding logic for guest users
+  useEffect(() => {
+    // Skip if session is still loading
+    if (session.status === 'loading') return;
+    
+    // Check if user is a guest and hasn't seen onboarding
+    const isGuest = !session.data?.user || session.data?.user?.type === 'guest';
+    const hasSeenOnboarding = localStorage.getItem('has-seen-onboarding') === 'true';
+    
+    if (isGuest && !hasSeenOnboarding && !hasShownOnboarding && book === 'Genesis' && chapter === 1 && scripture?.verses && scripture.verses.length > 0) {
+      // Pre-select Genesis 1:1
+      const firstVerse = scripture.verses.find(v => v.verse === 1);
+      if (firstVerse && !isVerseSelected('Genesis', 1, 1)) {
+        // Add a small delay to ensure the scripture is rendered
+        setTimeout(() => {
+          console.log('Pre-selecting Genesis 1:1 for onboarding');
+          addVerse({
+            book: 'Genesis',
+            chapter: 1,
+            verse: 1,
+            text: firstVerse.text,
+            translation: scripture.translation_name || 'English Standard Version',
+          });
+          setShowOnboarding(true);
+          setHasShownOnboarding(true);
+        }, 800);
+      }
+    }
+  }, [session.status, session.data, book, chapter, scripture, addVerse, isVerseSelected, hasShownOnboarding]);
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    localStorage.setItem('has-seen-onboarding', 'true');
+  };
 
   // When the modal is closed, clear the verse data after a delay
   // to allow for the exit animation to complete.
@@ -321,7 +361,13 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
 
   return (
     <>
-      <Card className="h-full flex flex-col shadow-lg">
+      <Card className="h-full flex flex-col shadow-lg relative overflow-hidden">
+        {/* Onboarding tooltip for guest users */}
+        <OnboardingTooltip 
+          isVisible={showOnboarding}
+          onClose={handleCloseOnboarding}
+        />
+        
         {/* Hide header on mobile - navigation is handled by the tab header */}
         <div className={cn("p-4 sm:p-6 border-b bg-muted/30", isMobile && "hidden")}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
