@@ -44,7 +44,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       params.set('chapter', chapter.toString());
     }
     router.push(`/?${params.toString()}`);
-    setOpenMobile(false);
+    
+    // Only close mobile sidebar when a chapter is selected
+    if (chapter) {
+      setOpenMobile(false);
+    }
   };
 
   return (
