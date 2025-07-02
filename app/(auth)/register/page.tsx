@@ -2,52 +2,52 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { signIn } from 'next-auth/react';
 
 import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
 
-import { register, type RegisterActionState } from '../actions';
+import { register } from '../actions';
 import { toast } from '@/components/toast';
-import { useSession } from 'next-auth/react';
 
 export default function Page() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState('');
-  const [isSuccessful, setIsSuccessful] = useState(false);
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const [state, formAction] = useActionState<RegisterActionState, FormData>(
-    register,
-    {
-      status: 'idle',
-    },
-  );
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-  const { update: updateSession } = useSession();
+    const result = await register({ status: 'idle' }, formData);
 
-  useEffect(() => {
-    if (state.status === 'user_exists') {
-      toast({ type: 'error', description: 'Account already exists!' });
-    } else if (state.status === 'failed') {
-      toast({ type: 'error', description: 'Failed to create account!' });
-    } else if (state.status === 'invalid_data') {
-      toast({
-        type: 'error',
-        description: 'Failed validating your submission!',
+    if (result.status === 'success') {
+      const signInResult = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
       });
-    } else if (state.status === 'success') {
-      toast({ type: 'success', description: 'Account created successfully!' });
 
-      setIsSuccessful(true);
-      updateSession();
-      router.refresh();
+      if (signInResult?.ok) {
+        router.replace('/');
+      } else {
+        toast({
+          type: 'error',
+          description: 'Account created, but failed to automatically log in.',
+        });
+        router.push('/login');
+      }
+    } else if (result.status === 'user_exists') {
+      toast({ type: 'error', description: 'An account with this email already exists.' });
+      setLoading(false);
+    } else {
+      toast({ type: 'error', description: 'Failed to create account.' });
+      setLoading(false);
     }
-  }, [state, router, updateSession]);
-
-  const handleSubmit = (formData: FormData) => {
-    setEmail(formData.get('email') as string);
-    formAction(formData);
   };
 
   return (
@@ -59,8 +59,10 @@ export default function Page() {
             Create an account with your email and password
           </p>
         </div>
-        <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
+        <AuthForm onSubmit={handleSubmit}>
+          <SubmitButton isSuccessful={false} pending={loading}>
+            Sign Up
+          </SubmitButton>
           <p className="text-center text-sm text-gray-600 mt-4 dark:text-zinc-400">
             {'Already have an account? '}
             <Link

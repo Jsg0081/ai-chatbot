@@ -19,10 +19,6 @@ interface PageProps {
 export default async function Page({ searchParams }: PageProps) {
   const session = await auth();
 
-  if (!session) {
-    redirect('/api/auth/guest');
-  }
-
   const id = generateUUID();
   const { book, chapter } = await searchParams;
 
@@ -63,7 +59,7 @@ export default async function Page({ searchParams }: PageProps) {
       initialChatModel={DEFAULT_CHAT_MODEL}
       initialVisibilityType="private"
       isReadonly={false}
-      session={session}
+      session={session!}
       autoResume={false}
     />
   ) : (
@@ -74,7 +70,7 @@ export default async function Page({ searchParams }: PageProps) {
       initialChatModel={modelIdFromCookie.value}
       initialVisibilityType="private"
       isReadonly={false}
-      session={session}
+      session={session!}
       autoResume={false}
     />
   );

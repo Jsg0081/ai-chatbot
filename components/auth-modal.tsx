@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useActionState, useEffect } from 'react';
+import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
-import { login, register, type LoginActionState, type RegisterActionState } from '@/app/(auth)/actions';
+import { register, type RegisterActionState } from '@/app/(auth)/actions';
 
 interface AuthModalProps {
   open: boolean;
@@ -24,52 +22,63 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
-  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
-  const [isSuccessful, setIsSuccessful] = useState(false);
-  const { update: updateSession } = useSession();
+  const [loading, setLoading] = useState(false);
 
-  const [loginState, loginAction] = useActionState<LoginActionState, FormData>(
-    login,
-    { status: 'idle' }
-  );
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const [registerState, registerAction] = useActionState<RegisterActionState, FormData>(
-    register,
-    { status: 'idle' }
-  );
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-  const state = mode === 'login' ? loginState : registerState;
-  const formAction = mode === 'login' ? loginAction : registerAction;
+    if (mode === 'login') {
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      });
 
-  useEffect(() => {
-    if (state.status === 'failed') {
-      toast.error(mode === 'login' ? 'Invalid credentials!' : 'Failed to create account!');
-    } else if (state.status === 'invalid_data') {
-      toast.error('Failed validating your submission!');
-    } else if (state.status === 'success') {
-      setIsSuccessful(true);
-      updateSession();
-      toast.success(mode === 'login' ? 'Signed in successfully!' : 'Account created successfully!');
-      
-      // Close modal and call onSuccess callback
-      setTimeout(() => {
+      if (result?.ok) {
+        toast.success('Signed in successfully!');
         onOpenChange(false);
         onSuccess?.();
-        router.refresh();
-      }, 500);
-    }
-  }, [state.status, mode, updateSession, onOpenChange, onSuccess, router]);
+      } else {
+        toast.error('Invalid credentials!');
+        setLoading(false);
+      }
+    } else {
+      // Register mode
+      const result = await register({ status: 'idle' }, formData);
 
-  const handleSubmit = (formData: FormData) => {
-    setEmail(formData.get('email') as string);
-    formAction(formData);
+      if (result.status === 'success') {
+        const signInResult = await signIn('credentials', {
+          redirect: false,
+          email,
+          password,
+        });
+
+        if (signInResult?.ok) {
+          toast.success('Account created and signed in!');
+          onOpenChange(false);
+          onSuccess?.();
+        } else {
+          toast.error('Account created, but automatic sign-in failed.');
+          setLoading(false);
+        }
+      } else if (result.status === 'user_exists') {
+        toast.error('An account with this email already exists.');
+        setLoading(false);
+      } else {
+        toast.error('Failed to create account.');
+        setLoading(false);
+      }
+    }
   };
 
   const toggleMode = () => {
     setMode(mode === 'login' ? 'register' : 'login');
-    setIsSuccessful(false);
   };
 
   return (
@@ -78,19 +87,21 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
         <DialogHeader>
           <DialogTitle>{mode === 'login' ? 'Sign In' : 'Sign Up'}</DialogTitle>
           <DialogDescription>
-            {mode === 'login' 
-              ? 'Use your email and password to sign in' 
+            {mode === 'login'
+              ? 'Use your email and password to sign in'
               : 'Create an account with your email and password'}
           </DialogDescription>
         </DialogHeader>
-        
-        <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton isSuccessful={isSuccessful}>
+
+        <AuthForm onSubmit={handleSubmit}>
+          <SubmitButton isSuccessful={false} pending={loading}>
             {mode === 'login' ? 'Sign in' : 'Sign up'}
           </SubmitButton>
-          
+
           <p className="text-center text-sm text-muted-foreground mt-4">
-            {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+            {mode === 'login'
+              ? "Don't have an account? "
+              : 'Already have an account? '}
             <Button
               type="button"
               variant="link"

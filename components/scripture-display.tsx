@@ -68,7 +68,11 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   
   // Debug effect to log modal state changes
   useEffect(() => {
-    console.log('Spotify modal state changed:', { showSpotifyModal, hasVerse: !!spotifySearchVerse });
+    console.log('Scripture Display - Spotify modal state changed:', { 
+      showSpotifyModal, 
+      hasVerse: !!spotifySearchVerse,
+      verseText: spotifySearchVerse?.text?.substring(0, 50) 
+    });
   }, [showSpotifyModal, spotifySearchVerse]);
 
   // Calculate selected verses for current chapter
@@ -215,6 +219,34 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const handleBookSelect = (bookName: string) => {
     // Logic to handle book selection, e.g., load the first chapter of the selected book
     console.log(`Selected book: ${bookName}`);
+  };
+
+  // Helper function to safely open Spotify modal
+  const openSpotifyModal = (verse: Verse) => {
+    console.log('Scripture Display - Opening Spotify modal for verse:', {
+      book,
+      chapter,
+      verse: verse.verse,
+      textPreview: verse.text.substring(0, 50)
+    });
+    
+    // Set the verse data first
+    setSpotifySearchVerse(verse);
+    
+    // Use a small delay to ensure state is set before opening modal
+    setTimeout(() => {
+      setShowSpotifyModal(true);
+    }, 50);
+  };
+
+  // Helper function to close Spotify modal
+  const closeSpotifyModal = () => {
+    console.log('Scripture Display - Closing Spotify modal');
+    setShowSpotifyModal(false);
+    // Clear verse data after a small delay to allow modal to close gracefully
+    setTimeout(() => {
+      setSpotifySearchVerse(null);
+    }, 100);
   };
 
   if (loading) {
@@ -413,11 +445,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                             // Prevent default behavior
                             e.preventDefault();
                             // Set the verse for Spotify search
-                            setSpotifySearchVerse(verse);
-                            // Use setTimeout with a longer delay to ensure context menu is fully closed
-                            setTimeout(() => {
-                              setShowSpotifyModal(true);
-                            }, 150);
+                            openSpotifyModal(verse);
                           }}
                           className="gap-2"
                         >
@@ -437,11 +465,8 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
       <SpotifySearchModal 
         open={showSpotifyModal}
         onOpenChange={(open) => {
-          console.log('Modal onOpenChange called with:', open);
-          setShowSpotifyModal(open);
           if (!open) {
-            // Clear the verse when modal closes
-            setSpotifySearchVerse(null);
+            closeSpotifyModal();
           }
         }}
         verses={spotifySearchVerse ? [{

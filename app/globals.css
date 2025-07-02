@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* System font fallbacks while Turbopack font loading is fixed */
+:root {
+    --font-geist: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-geist-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+body {
+    font-family: var(--font-geist);
+}
+
+code,
+pre,
+.font-mono {
+    font-family: var(--font-geist-mono);
+}
+
 :root {
     --foreground-rgb: 0, 0, 0;
     --background-start-rgb: 214, 219, 220;

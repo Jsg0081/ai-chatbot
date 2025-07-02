@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -40,21 +40,30 @@ export function SidebarNotesHistory() {
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activeNoteId, setActiveNoteId] = useState<string | undefined>();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const lastFetchRef = useRef<string | null>(null);
+  const isLoadingRef = useRef(false);
 
-  // Load notes on mount and when session changes
+  // Load notes on mount and when session changes (but prevent duplicate fetches)
   useEffect(() => {
-    if (session?.user?.id && session.user.type !== 'guest') {
-      loadNotes();
-    } else {
-      setNotes([]);
+    const sessionKey = session?.user?.id || 'no-session';
+    
+    // Only fetch if session has changed and we're not already loading
+    if (sessionKey !== lastFetchRef.current && !isLoadingRef.current) {
+      lastFetchRef.current = sessionKey;
+      
+      if (session?.user?.id && session.user.type !== 'guest' && status === 'authenticated') {
+        loadNotes();
+      } else {
+        setNotes([]);
+      }
     }
-  }, [session]);
+  }, [session?.user?.id, session?.user?.type, status]);
 
   // Listen for note updates
   useEffect(() => {
     const handleNotesUpdate = () => {
-      if (session?.user?.id && session.user.type !== 'guest') {
+      if (session?.user?.id && session.user.type !== 'guest' && status === 'authenticated') {
         loadNotes();
       }
     };
@@ -63,9 +72,13 @@ export function SidebarNotesHistory() {
     return () => {
       window.removeEventListener('notes-updated', handleNotesUpdate);
     };
-  }, [session]);
+  }, [session?.user?.id, session?.user?.type, status]);
 
   const loadNotes = async () => {
+    // Prevent concurrent fetches
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+    
     try {
       const response = await fetch('/api/notes');
       if (!response.ok) {
@@ -77,6 +90,8 @@ export function SidebarNotesHistory() {
     } catch (error) {
       console.error('Error loading notes:', error);
       toast.error('Failed to load notes');
+    } finally {
+      isLoadingRef.current = false;
     }
   };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,9 +8,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink, Headphones, BookOpen, Search, Music, X } from 'lucide-react';
+import { X as CloseIcon } from 'lucide-react';
 import Image from 'next/image';
 import type { SpotifyShow, SpotifyAudiobook } from '@/lib/spotify';
 import { cn } from '@/lib/utils';
+import * as React from 'react';
 
 interface SpotifySearchModalProps {
   open: boolean;
@@ -25,37 +27,134 @@ interface SpotifySearchModalProps {
   query?: string;
 }
 
-export function SpotifySearchModal({ open, onOpenChange, verses, query }: SpotifySearchModalProps) {
+export function SpotifySearchModal({ 
+  open, 
+  onOpenChange, 
+  verses,
+  query: initialQuery 
+}: SpotifySearchModalProps) {
+  const [podcasts, setPodcasts] = useState<SpotifyShow[]>([]);
+  const [audiobooks, setAudiobooks] = useState<SpotifyAudiobook[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [shows, setShows] = useState<SpotifyShow[]>([]);
-  const [audiobooks, setAudiobooks] = useState<SpotifyAudiobook[]>([]);
+  const [query, setQuery] = useState(initialQuery || '');
   const [activeTab, setActiveTab] = useState<'podcasts' | 'audiobooks'>('podcasts');
+  const [isModalReady, setIsModalReady] = useState(false);
+  
+  // Use refs to track state without causing re-renders
+  const isSearchingRef = useRef(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const openTimeRef = useRef<number>(0);
+  
+  // Store the open state in a ref to prevent stale closures
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('SpotifySearchModal state:', { 
+      open, 
+      isModalReady,
+      versesCount: verses?.length,
+      query: query?.substring(0, 20),
+      loading,
+      hasResults: podcasts.length > 0 || audiobooks.length > 0
+    });
+  }, [open, isModalReady, verses, query, loading, podcasts.length, audiobooks.length]);
+
+  // Validate that we have searchable data
+  const hasValidData = useCallback(() => {
+    const hasVerses = verses && verses.length > 0;
+    const hasQuery = query && query.trim().length > 0;
+    return hasVerses || hasQuery;
+  }, [verses, query]);
+
+  // Reset state when modal opens/closes
   useEffect(() => {
     if (open) {
-      // Track when modal opens to prevent immediate close
-      (window as any).spotifyModalOpenTime = Date.now();
+      console.log('SpotifySearchModal - Opening with data:', { 
+        hasVerses: verses && verses.length > 0,
+        verseCount: verses?.length || 0,
+        hasQuery: query && query.trim().length > 0,
+        query: query?.substring(0, 50)
+      });
       
-      if (verses || query) {
-        // Small delay to ensure modal is fully opened before making the request
-        const timer = setTimeout(() => {
-          searchSpotify();
-        }, 100);
-        return () => clearTimeout(timer);
+      openTimeRef.current = Date.now();
+      setError(null);
+      setPodcasts([]);
+      setAudiobooks([]);
+      setActiveTab('podcasts');
+      
+      // Only search if we have valid data
+      if (hasValidData()) {
+        // Clear any existing timeout
+        if (searchTimeoutRef.current) {
+          clearTimeout(searchTimeoutRef.current);
+        }
+        
+        // Delay the search to ensure modal is fully rendered
+        searchTimeoutRef.current = setTimeout(() => {
+          if (open && hasValidData() && !isSearchingRef.current) {
+            searchSpotify();
+          }
+        }, 300);
+      } else {
+        console.warn('SpotifySearchModal - No valid search data provided');
+        setError('No search data provided');
+      }
+      
+      // Set modal ready after a delay
+      setTimeout(() => {
+        setIsModalReady(true);
+      }, 300);
+    } else {
+      // Clear timeout when closing
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
       }
     }
-  }, [open, verses, query]);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [open, hasValidData]);
 
   const searchSpotify = async () => {
+    // Double-check we have valid data before making request
+    if (!hasValidData()) {
+      console.warn('SpotifySearchModal - Attempted search without valid data');
+      setError('No search data available');
+      return;
+    }
+
+    // Prevent duplicate searches
+    if (isSearchingRef.current) {
+      console.log('SpotifySearchModal - Search already performed, skipping');
+      return;
+    }
+
+    isSearchingRef.current = true;
     setLoading(true);
     setError(null);
     
+    console.log('SpotifySearchModal - Starting search with:', { 
+      verses: verses?.length || 0,
+      query: query?.substring(0, 50) || 'none'
+    });
+    
     try {
+      const requestBody = { verses, query };
+      console.log('SpotifySearchModal - Making API request:', requestBody);
+      
       const response = await fetch('/api/spotify-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verses, query }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -64,7 +163,12 @@ export function SpotifySearchModal({ open, onOpenChange, verses, query }: Spotif
       }
 
       const data = await response.json();
-      setShows(data.shows?.items || []);
+      console.log('SpotifySearchModal - Search results:', {
+        showCount: data.shows?.items?.length || 0,
+        audiobookCount: data.audiobooks?.items?.length || 0
+      });
+      
+      setPodcasts(data.shows?.items || []);
       setAudiobooks(data.audiobooks?.items || []);
       
       // Switch to audiobooks tab if no podcasts found but audiobooks exist
@@ -73,9 +177,11 @@ export function SpotifySearchModal({ open, onOpenChange, verses, query }: Spotif
         setActiveTab('audiobooks');
       }
     } catch (err) {
+      console.error('SpotifySearchModal - Search error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+      isSearchingRef.current = false;
     }
   };
 
@@ -90,28 +196,65 @@ export function SpotifySearchModal({ open, onOpenChange, verses, query }: Spotif
     return query || 'Search';
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    const now = Date.now();
+
+    // Ignore the very first state flip Radix triggers during mount
+    if (newOpen && !openRef.current) {
+      return;
+    }
+
+    // Block any auto-close that happens within the first 800 ms
+    if (!newOpen && now - openTimeRef.current < 800) {
+      console.log('SpotifySearchModal – swallowed spurious close');
+      return;
+    }
+
+    if (!newOpen) setIsModalReady(false);
+
+    onOpenChange(newOpen);
+  };
+
+  // Prevent interaction events from closing modal too quickly
+  const preventEarlyClose = (e: Event) => {
+    const timeSinceOpen = Date.now() - openTimeRef.current;
+    if (timeSinceOpen < 500) {
+      console.log('SpotifySearchModal - Preventing early interaction close');
+      e.preventDefault();
+      return false;
+    }
+    return true;
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
+    <Dialog open={open} onOpenChange={handleOpenChange} modal={true}>
       <DialogContent 
         className="max-w-4xl max-h-[85vh] p-0" 
-        onOpenAutoFocus={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => {
+          // Prevent auto-focus issues
+          e.preventDefault();
+        }}
         onInteractOutside={(e) => {
-          // Prevent closing on outside click for the first 300ms
-          if (Date.now() - (window as any).spotifyModalOpenTime < 300) {
-            e.preventDefault();
-          }
+          if (!preventEarlyClose(e)) return;
         }}
         onEscapeKeyDown={(e) => {
-          // Allow escape key to close after 300ms
-          if (Date.now() - (window as any).spotifyModalOpenTime < 300) {
-            e.preventDefault();
-          }
+          if (!preventEarlyClose(e)) return;
+        }}
+        onPointerDownOutside={(e) => {
+          if (!preventEarlyClose(e)) return;
         }}
       >
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b relative">
           <DialogTitle className="text-2xl flex items-center gap-2">
             <Music className="h-6 w-6 text-green-500" />
             Spotify Content
+            <Button
+              variant="ghost"
+              className="absolute right-4 top-4 p-1 h-7 w-7"
+              onClick={() => handleOpenChange(false)}
+            >
+              <CloseIcon className="h-4 w-4" />
+            </Button>
           </DialogTitle>
           <DialogDescription className="mt-2">
             Podcasts and audiobooks related to <span className="font-semibold">{getSearchTitle()}</span>
@@ -119,12 +262,12 @@ export function SpotifySearchModal({ open, onOpenChange, verses, query }: Spotif
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-                      <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as 'podcasts' | 'audiobooks')} className="h-full">
+          <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as 'podcasts' | 'audiobooks')} className="h-full">
             <div className="px-6 pt-4">
               <TabsList className="grid w-full max-w-[400px] grid-cols-2">
                 <TabsTrigger value="podcasts" className="flex items-center gap-2">
                   <Headphones className="h-4 w-4" />
-                  Podcasts ({shows.length})
+                  Podcasts ({podcasts.length})
                 </TabsTrigger>
                 <TabsTrigger value="audiobooks" className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
@@ -140,10 +283,10 @@ export function SpotifySearchModal({ open, onOpenChange, verses, query }: Spotif
                     <LoadingSkeleton />
                   ) : error ? (
                     <ErrorMessage error={error} />
-                  ) : shows.length === 0 ? (
+                  ) : podcasts.length === 0 ? (
                     <EmptyState type="podcasts" />
                   ) : (
-                    shows.map((show) => <ShowCard key={show.id} show={show} />)
+                    podcasts.map((show) => <ShowCard key={show.id} show={show} />)
                   )}
                 </TabsContent>
 

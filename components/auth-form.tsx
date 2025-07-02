@@ -1,21 +1,17 @@
-import Form from 'next/form';
-
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
 export function AuthForm({
-  action,
+  onSubmit,
   children,
   defaultEmail = '',
 }: {
-  action: NonNullable<
-    string | ((formData: FormData) => void | Promise<void>) | undefined
-  >;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   children: React.ReactNode;
   defaultEmail?: string;
 }) {
   return (
-    <Form action={action} className="flex flex-col gap-4 px-4 sm:px-16">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4 px-4 sm:px-16">
       <div className="flex flex-col gap-2">
         <Label
           htmlFor="email"
@@ -23,7 +19,6 @@ export function AuthForm({
         >
           Email Address
         </Label>
-
         <Input
           id="email"
           name="email"
@@ -36,7 +31,6 @@ export function AuthForm({
           defaultValue={defaultEmail}
         />
       </div>
-
       <div className="flex flex-col gap-2">
         <Label
           htmlFor="password"
@@ -44,7 +38,6 @@ export function AuthForm({
         >
           Password
         </Label>
-
         <Input
           id="password"
           name="password"
@@ -53,8 +46,7 @@ export function AuthForm({
           required
         />
       </div>
-
       {children}
-    </Form>
+    </form>
   );
 }

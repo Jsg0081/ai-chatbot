@@ -1,6 +1,7 @@
 import { Toaster } from 'sonner';
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+// Temporarily disable Google Fonts due to Turbopack compatibility issues
+// import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/providers';
 
@@ -43,17 +44,18 @@ export const viewport = {
   maximumScale: 1, // Disable auto-zoom on mobile Safari
 };
 
-const geist = Geist({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-geist',
-});
+// Temporarily use system fonts as fallback
+// const geist = Geist({
+//   subsets: ['latin'],
+//   display: 'swap',
+//   variable: '--font-geist',
+// });
 
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-geist-mono',
-});
+// const geistMono = Geist_Mono({
+//   subsets: ['latin'],
+//   display: 'swap',
+//   variable: '--font-geist-mono',
+// });
 
 const LIGHT_THEME_COLOR = 'hsl(0 0% 100%)';
 const DARK_THEME_COLOR = 'hsl(240deg 10% 3.92%)';
@@ -88,7 +90,7 @@ export default async function RootLayout({
       // prop is necessary to avoid the React hydration mismatch warning.
       // https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
       suppressHydrationWarning
-      className={`${geist.variable} ${geistMono.variable}`}
+      // className={`${geist.variable} ${geistMono.variable}`}
     >
       <head>
         <script

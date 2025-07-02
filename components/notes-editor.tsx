@@ -347,10 +347,10 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     setIsAutoSaving(true);
     const timer = setTimeout(() => {
       saveNote();
-    }, 1000); // Save after 1 second of no changes
+    }, 2000); // Increased to 2 seconds to reduce frequency
 
     return () => clearTimeout(timer);
-  }, [content, currentNoteId, hasUserInteracted, session, status]);
+  }, [content, currentNoteId, hasUserInteracted]); // Removed session and status from deps to prevent loops
 
   // Auto-save title after delay
   useEffect(() => {
@@ -364,10 +364,10 @@ export function NotesEditor({ chatId, noteId, onNoteIdChange }: NotesEditorProps
     setIsAutoSaving(true);
     const timer = setTimeout(() => {
       saveNote();
-    }, 500); // Save title faster
+    }, 1000); // Increased to 1 second
 
     return () => clearTimeout(timer);
-  }, [title, currentNoteId, hasUserInteracted, session, status]);
+  }, [title, currentNoteId, hasUserInteracted]); // Removed session and status from deps to prevent loops
 
   // Create new note
   const createNewNote = () => {
