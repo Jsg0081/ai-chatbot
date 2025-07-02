@@ -182,6 +182,8 @@ export function Chat({
         votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
+        session={session}
+        selectedModelId={initialChatModel}
       />
     </>
   );
