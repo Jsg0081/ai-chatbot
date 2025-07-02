@@ -334,7 +334,7 @@ function PureMultimodalInput({
                 </span>
               )}
             </div>
-            <p className="text-sm text-foreground/80 line-clamp-2">
+            <p className="text-sm line-clamp-2 text-cyan-950 dark:text-[#80ffdb] font-medium">
               {getFormattedVerses()}
             </p>
           </div>

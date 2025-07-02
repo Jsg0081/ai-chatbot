@@ -21,9 +21,16 @@ export function ScriptureProvider({ children }: { children: ReactNode }) {
     
     if (savedBook) {
       setBook(savedBook);
+    } else {
+      // Default to Genesis chapter 1 if no saved scripture
+      setBook('Genesis');
     }
+    
     if (savedChapter) {
       setChapter(parseInt(savedChapter));
+    } else {
+      // Default to chapter 1 if no saved chapter
+      setChapter(1);
     }
   }, []);
 

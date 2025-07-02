@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { BookOpenIcon } from 'lucide-react';
+import { useVerse } from '@/lib/verse-context';
 
 interface VerseData {
   reference: string;
@@ -24,11 +25,14 @@ interface BibleVerseTooltipProps {
 // - Book Chapter:Verse-Verse (e.g., John 3:16-17)
 // - (Book Chapter:Verse) with parentheses
 // - Book Chapter:Verse,Verse (e.g., John 3:16,18)
+// - [Book Chapter:Verse] with square brackets
 const VERSE_PATTERNS = [
   // Standard format: Book Chapter:Verse or Book Chapter:Verse-Verse
   /\b([1-3]?\s?[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(\d+):(\d+)(?:-(\d+))?\b/g,
   // With parentheses: (Book Chapter:Verse)
   /\(([1-3]?\s?[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(\d+):(\d+)(?:-(\d+))?\)/g,
+  // With square brackets: [Book Chapter:Verse]
+  /\[([1-3]?\s?[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(\d+):(\d+)(?:-(\d+))?\]/g,
   // Multiple verses with commas: Book Chapter:Verse,Verse
   /\b([1-3]?\s?[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(\d+):(\d+(?:,\d+)*)\b/g,
 ];
@@ -69,6 +73,34 @@ function BibleVerseTooltip({ reference, children }: { reference: string; childre
   const [verseData, setVerseData] = useState<VerseData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const { isVerseSelected } = useVerse();
+
+  // Parse reference to check if verse is selected
+  const parseReference = (ref: string) => {
+    const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+    if (match) {
+      const [, book, chapter, startVerse, endVerse] = match;
+      return {
+        book: book.trim(),
+        chapter: parseInt(chapter),
+        startVerse: parseInt(startVerse),
+        endVerse: endVerse ? parseInt(endVerse) : parseInt(startVerse)
+      };
+    }
+    return null;
+  };
+
+  const parsedRef = parseReference(reference);
+  
+  // Check if any verse in the range is selected
+  const isSelected = parsedRef ? (() => {
+    for (let v = parsedRef.startVerse; v <= parsedRef.endVerse; v++) {
+      if (isVerseSelected(parsedRef.book, parsedRef.chapter, v)) {
+        return true;
+      }
+    }
+    return false;
+  })() : false;
 
   const fetchVerse = async () => {
     if (loading || verseData) return;
@@ -150,11 +182,17 @@ function BibleVerseTooltip({ reference, children }: { reference: string; childre
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className="text-primary underline decoration-dotted cursor-pointer hover:decoration-solid transition-all inline-flex items-center gap-1"
+            className={`
+              underline decoration-dotted cursor-pointer hover:decoration-solid transition-all inline-flex items-center gap-1
+              ${isSelected 
+                ? 'text-cyan-950 dark:text-[#80ffdb] bg-cyan-300/40 dark:bg-[#80ffdb]/10 px-1 rounded' 
+                : 'text-primary'
+              }
+            `}
             onMouseEnter={() => fetchVerse()}
           >
             {children}
-            <BookOpenIcon className="h-3 w-3 opacity-50" />
+            <BookOpenIcon className={`h-3 w-3 ${isSelected ? 'opacity-70' : 'opacity-50'}`} />
           </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-md p-4" side="top">
