@@ -66,6 +66,17 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const [showSpotifyModal, setShowSpotifyModal] = useState(false);
   const [spotifySearchVerse, setSpotifySearchVerse] = useState<Verse | null>(null);
   
+  // When the modal is closed, clear the verse data after a delay
+  // to allow for the exit animation to complete.
+  useEffect(() => {
+    if (!showSpotifyModal) {
+      const timer = setTimeout(() => {
+        setSpotifySearchVerse(null);
+      }, 200); // Should match modal animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [showSpotifyModal]);
+
   // Debug effect to log modal state changes
   useEffect(() => {
     console.log('Scripture Display - Spotify modal state changed:', { 
@@ -221,34 +232,6 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
     console.log(`Selected book: ${bookName}`);
   };
 
-  // Helper function to safely open Spotify modal
-  const openSpotifyModal = (verse: Verse) => {
-    console.log('Scripture Display - Opening Spotify modal for verse:', {
-      book,
-      chapter,
-      verse: verse.verse,
-      textPreview: verse.text.substring(0, 50)
-    });
-    
-    // Set the verse data first
-    setSpotifySearchVerse(verse);
-    
-    // Use a small delay to ensure state is set before opening modal
-    setTimeout(() => {
-      setShowSpotifyModal(true);
-    }, 50);
-  };
-
-  // Helper function to close Spotify modal
-  const closeSpotifyModal = () => {
-    console.log('Scripture Display - Closing Spotify modal');
-    setShowSpotifyModal(false);
-    // Clear verse data after a small delay to allow modal to close gracefully
-    setTimeout(() => {
-      setSpotifySearchVerse(null);
-    }, 100);
-  };
-
   if (loading) {
     return (
       <Card className="p-6 h-full">
@@ -397,9 +380,8 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                           className={`
                             group cursor-pointer rounded px-1 -mx-1 transition-all
                             ${isSelected && isDragging ? 'opacity-50' : ''}
-                            ${isSelected ? 'cursor-grab active:cursor-grabbing' : ''}
+                            ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#80ffdb]/10 dark:text-[#80ffdb]' : ''}
                           `}
-                          style={isSelected ? selectedVerseStyle : undefined}
                           onClick={(e) => {
                             // Only handle click if not right-clicking
                             if (e.button === 0) {
@@ -418,7 +400,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                           <sup className={`
                             text-xs mr-1 font-bold transition-colors
                             ${isSelected 
-                              ? 'text-green-700' 
+                              ? 'text-cyan-950 dark:text-[#80ffdb]' 
                               : 'text-primary group-hover:text-primary/80'
                             }
                           `}>
@@ -445,7 +427,8 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                             // Prevent default behavior
                             e.preventDefault();
                             // Set the verse for Spotify search
-                            openSpotifyModal(verse);
+                            setSpotifySearchVerse(verse);
+                            setShowSpotifyModal(true);
                           }}
                           className="gap-2"
                         >
@@ -464,11 +447,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
       
       <SpotifySearchModal 
         open={showSpotifyModal}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeSpotifyModal();
-          }
-        }}
+        onOpenChange={setShowSpotifyModal}
         verses={spotifySearchVerse ? [{
           book,
           chapter,

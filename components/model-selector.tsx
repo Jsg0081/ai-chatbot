@@ -29,7 +29,7 @@ export function ModelSelector({
   const [optimisticModelId, setOptimisticModelId] =
     useOptimistic(selectedModelId);
 
-  const userType = session.user.type;
+  const userType = session?.user?.type || 'guest';
   const { availableChatModelIds } = entitlementsByUserType[userType];
 
   const availableChatModels = chatModels.filter((chatModel) =>
@@ -55,11 +55,13 @@ export function ModelSelector({
       >
         <Button
           data-testid="model-selector"
-          variant="outline"
-          className="md:px-2 md:h-[34px]"
+          variant="ghost"
+          className="flex items-center gap-1"
         >
           {selectedChatModel?.name}
-          <ChevronDownIcon />
+          <div className="size-3.5">
+            <ChevronDownIcon />
+          </div>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[300px]">
