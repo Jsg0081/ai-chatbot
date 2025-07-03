@@ -33,6 +33,11 @@ export const myProvider = isTestEnvironment
             throw new Error(`Unknown model ID: ${modelId}`);
         }
       },
+      imageModel: (modelId: string) => {
+        // In test environment, we need to return a mock image model
+        // For now, we'll throw an error since image generation isn't supported in tests
+        throw new Error('Image generation is not supported in test environment');
+      },
     }
   : {
       languageModel: (modelId: string) => {
@@ -85,6 +90,16 @@ export const myProvider = isTestEnvironment
             return xai('grok-2-image');
           default:
             throw new Error(`Unknown model ID: ${modelId}`);
+        }
+      },
+      imageModel: (modelId: string) => {
+        // For now, only xAI provides image generation through their image model
+        // The xai.image() method returns an image model, not a language model
+        switch (modelId) {
+          case 'small-model':
+            return xai.image('grok-2-image');
+          default:
+            throw new Error(`Unknown image model ID: ${modelId}`);
         }
       },
     };
