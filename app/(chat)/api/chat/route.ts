@@ -68,7 +68,8 @@ export async function POST(request: Request) {
   try {
     const json = await request.json();
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+  } catch (error) {
+    console.error('Failed to parse request body:', error);
     return new ChatSDKError('bad_request:api').toResponse();
   }
 
@@ -290,8 +291,17 @@ export async function POST(request: Request) {
           lastMessage: transformedMessages[transformedMessages.length - 1],
         });
         
+        let model;
+        try {
+          model = myProvider.languageModel(selectedChatModel);
+          console.log('Model created successfully for:', selectedChatModel);
+        } catch (error) {
+          console.error('Error creating model:', error);
+          throw error;
+        }
+        
         const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
+          model,
           system: systemPrompt({ selectedChatModel, requestHints, hasBibleVerses }),
           messages: transformedMessages,
           maxSteps: 5,
@@ -363,7 +373,8 @@ export async function POST(request: Request) {
           sendReasoning: true,
         });
       },
-      onError: () => {
+      onError: (error) => {
+        console.error('Stream error:', error);
         return 'Oops, an error occurred!';
       },
     });
@@ -378,9 +389,21 @@ export async function POST(request: Request) {
       return new Response(stream);
     }
   } catch (error) {
+    console.error('Error in chat route:', error);
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
+    // Return a generic error response for unexpected errors
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      }), 
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 }
 

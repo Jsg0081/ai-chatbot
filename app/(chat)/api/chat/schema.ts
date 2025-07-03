@@ -30,7 +30,15 @@ export const postRequestBodySchema = z.object({
       )
       .optional(),
   }),
-  selectedChatModel: z.enum(['chat-model', 'chat-model-reasoning']),
+  selectedChatModel: z.enum([
+    'chat-model', 
+    'chat-model-reasoning',
+    'chatgpt-4o-latest',
+    'gpt-4.1-2025-04-14',
+    'o3-2025-04-16',
+    'claude-4-sonnet',
+    'claude-3.7-sonnet'
+  ]),
   selectedVisibilityType: z.enum(['public', 'private']),
 });
 

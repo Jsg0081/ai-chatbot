@@ -49,6 +49,9 @@ export const {
         }
 
         const [user] = users;
+        
+        // Debug logging
+        console.log('User from database:', user);
 
         if (!user.password) {
           await compare(password, DUMMY_PASSWORD);
@@ -81,11 +84,15 @@ export const {
       return token;
     },
     async session({ session, token }) {
+      console.log('Session callback - token:', token);
+      console.log('Session callback - session before:', session);
+      
       if (session.user) {
         session.user.id = token.id;
         session.user.type = token.type;
       }
-
+      
+      console.log('Session callback - session after:', session);
       return session;
     },
   },

@@ -13,6 +13,9 @@ const Textarea = React.forwardRef<
         className,
       )}
       ref={ref}
+      data-gramm="false"
+      data-gramm_editor="false"
+      data-enable-grammarly="false"
       {...props}
     />
   );

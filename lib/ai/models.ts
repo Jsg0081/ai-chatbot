@@ -1,4 +1,4 @@
-export const DEFAULT_CHAT_MODEL: string = 'chat-model';
+export const DEFAULT_CHAT_MODEL: string = 'chatgpt-4o-latest';
 
 export interface ChatModel {
   id: string;
@@ -9,12 +9,37 @@ export interface ChatModel {
 export const chatModels: Array<ChatModel> = [
   {
     id: 'chat-model',
-    name: 'Advanced Chat',
-    description: 'Primary model for all-purpose chat',
+    name: 'Grok 2 Vision',
+    description: 'Fast reasoning with vision capabilities',
   },
   {
     id: 'chat-model-reasoning',
-    name: 'Deep Reasoning',
-    description: 'Uses advanced reasoning',
+    name: 'Grok 3 Mini',
+    description: 'Advanced reasoning and analysis',
+  },
+  {
+    id: 'chatgpt-4o-latest',
+    name: 'gpt-4o',
+    description: 'Fast, intelligent, flexible GPT model',
+  },
+  {
+    id: 'gpt-4.1-2025-04-14',
+    name: 'gpt-4.1',
+    description: 'Flagship model for complex tasks',
+  },
+  {
+    id: 'o3-2025-04-16',
+    name: 'gpt-o3',
+    description: 'Our most powerful reasoning model',
+  },
+  {
+    id: 'claude-4-sonnet',
+    name: 'Claude 4 Sonnet',
+    description: 'Advanced reasoning with vision capabilities',
+  },
+  {
+    id: 'claude-3.7-sonnet',
+    name: 'Claude 3.7 Sonnet',
+    description: 'Fast, intelligent, and cost-effective',
   },
 ];
