@@ -1172,3 +1172,49 @@ export const WarningIcon = ({ size = 16 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const SparkLogo = ({ className, width = 120, height = 32 }: { className?: string; width?: number; height?: number }) => {
+  return (
+    <>
+      {/* Light mode logo */}
+      <img
+        src="/images/sparklogo_lightmode.svg"
+        alt="Bible Spark"
+        width={width}
+        height={height}
+        className={`dark:hidden ${className || ''}`}
+      />
+      {/* Dark mode logo */}
+      <img
+        src="/images/sparklogo.svg"
+        alt="Bible Spark"
+        width={width}
+        height={height}
+        className={`hidden dark:block ${className || ''}`}
+      />
+    </>
+  );
+};
+
+export const SparkIcon = ({ className, size = 28 }: { className?: string; size?: number }) => {
+  return (
+    <>
+      {/* Light mode icon */}
+      <img
+        src="/images/sparklogo_icon_lightmode.svg"
+        alt="Spark Logo"
+        width={size}
+        height={size}
+        className={`dark:hidden ${className || ''}`}
+      />
+      {/* Dark mode icon */}
+      <img
+        src="/images/sparklogo_icon.svg"
+        alt="Spark Logo"
+        width={size}
+        height={size}
+        className={`hidden dark:block ${className || ''}`}
+      />
+    </>
+  );
+};

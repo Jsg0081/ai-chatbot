@@ -3,7 +3,7 @@
 import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 
-import { SidebarLeftIcon } from '@/components/icons';
+import { SidebarLeftIcon, SparkLogo } from '@/components/icons';
 import { BibleBooks } from '@/components/bible-books';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarNotesHistory } from '@/components/sidebar-notes-history';
@@ -19,7 +19,6 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { useScripture } from '@/lib/scripture-context';
 import { X } from 'lucide-react';
@@ -64,14 +63,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               className="flex flex-row gap-3 items-center"
             >
               <div className="px-2 hover:bg-muted rounded-md cursor-pointer flex items-center">
-                <Image
-                  src="/images/sparklogo.png"
-                  alt="Bible Study Assistant"
-                  width={120}
-                  height={32}
-                  className="h-8 w-auto"
-                  priority
-                />
+                <SparkLogo width={120} height={32} className="h-8 w-auto" />
               </div>
             </Link>
             <div className="flex items-center gap-1">

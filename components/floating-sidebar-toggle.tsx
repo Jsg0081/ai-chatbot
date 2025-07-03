@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { SparkIcon } from '@/components/icons';
 import { useSidebar } from '@/components/ui/sidebar';
 import {
   Tooltip,
@@ -26,11 +26,7 @@ export function FloatingSidebarToggle({ className }: { className?: string }) {
             size="icon"
             className="fixed top-4 left-4 z-50 size-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-accent"
           >
-            <img 
-              src="/images/sparklogo_icon.png" 
-              alt="Spark Logo" 
-              className="size-7"
-            />
+            <SparkIcon size={28} className="size-7" />
             <span className="sr-only">Toggle sidebar</span>
           </Button>
         </TooltipTrigger>
