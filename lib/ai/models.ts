@@ -34,12 +34,12 @@ export const chatModels: Array<ChatModel> = [
   },
   {
     id: 'claude-4-sonnet',
-    name: 'Claude 4 Sonnet',
+    name: 'claude-4-sonnet',
     description: 'Advanced reasoning with vision capabilities',
   },
   {
     id: 'claude-3.7-sonnet',
-    name: 'Claude 3.7 Sonnet',
+    name: 'claude-3.7-sonnet',
     description: 'Fast, intelligent, and cost-effective',
   },
 ];
