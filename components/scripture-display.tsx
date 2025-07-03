@@ -50,8 +50,8 @@ const DEFAULT_TRANSLATIONS = [
 
 // Add the following CSS class to style selected verses
 const selectedVerseStyle = {
-  color: '#80ffdb', // Lime Green
-  backgroundColor: 'rgba(128, 255, 219, 0.10)', // Lime Green with 15% opacity
+  color: '#00e599', // Bright Green
+  backgroundColor: 'rgba(0, 229, 153, 0.10)', // Bright Green with 10% opacity
   padding: '2px 4px',
   borderRadius: '4px',
   cursor: 'grab',
@@ -482,7 +482,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                             group cursor-pointer rounded px-1 -mx-1 transition-all
                             touch-manipulation select-none
                             ${isSelected && isDragging ? 'opacity-50' : ''}
-                            ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#80ffdb]/10 dark:text-[#80ffdb]' : ''}
+                            ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#00e599]/10 dark:text-[#00e599]' : ''}
                           `}
                           onClick={(e) => {
                             // Only handle click if not right-clicking
@@ -502,7 +502,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                           <sup className={`
                             text-[10px] sm:text-xs mr-1 font-bold transition-colors
                             ${isSelected 
-                              ? 'text-cyan-950 dark:text-[#80ffdb]' 
+                              ? 'text-cyan-950 dark:text-[#00e599]' 
                               : 'text-primary group-hover:text-primary/80'
                             }
                           `}>

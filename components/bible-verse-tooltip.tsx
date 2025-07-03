@@ -185,7 +185,7 @@ function BibleVerseTooltip({ reference, children }: { reference: string; childre
             className={`
               underline decoration-dotted cursor-pointer hover:decoration-solid transition-all inline-flex items-center gap-1
               ${isSelected 
-                ? 'text-cyan-950 dark:text-[#80ffdb] bg-cyan-300/40 dark:bg-[#80ffdb]/10 px-1 rounded' 
+                ? 'text-cyan-950 dark:text-[#00e599] bg-cyan-300/40 dark:bg-[#00e599]/10 px-1 rounded' 
                 : 'text-primary'
               }
             `}
