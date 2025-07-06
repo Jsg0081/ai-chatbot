@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { useSession } from 'next-auth/react';
 import { format } from 'date-fns';
@@ -31,6 +32,7 @@ export function SidebarVerseNotes() {
   const { data: session } = useSession();
   const router = useRouter();
   const { setScripture } = useScripture();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   useEffect(() => {
     loadNotes();
@@ -63,6 +65,16 @@ export function SidebarVerseNotes() {
     params.set('book', note.book);
     params.set('chapter', note.chapter);
     router.push(`/?${params.toString()}`);
+    
+    // On mobile, close sidebar and switch to scripture tab
+    if (isMobile) {
+      setOpenMobile(false);
+      // Switch to scripture tab
+      const activeTabKey = 'bible-mobile-active-tab';
+      localStorage.setItem(activeTabKey, 'scripture');
+      // Dispatch custom event to notify ResizablePanels to switch tabs
+      window.dispatchEvent(new CustomEvent('mobile-tab-switch', { detail: 'scripture' }));
+    }
   };
 
   const handleViewAll = () => {

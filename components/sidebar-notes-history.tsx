@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   AlertDialog,
@@ -43,6 +44,7 @@ export function SidebarNotesHistory() {
   const { data: session, status } = useSession();
   const lastFetchRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
+  const { isMobile, setOpenMobile } = useSidebar();
 
   // Load notes on mount and when session changes (but prevent duplicate fetches)
   useEffect(() => {
@@ -100,6 +102,16 @@ export function SidebarNotesHistory() {
     if (typeof window !== 'undefined' && (window as any).handleNoteSelect) {
       (window as any).handleNoteSelect(noteId);
       setActiveNoteId(noteId);
+      
+      // On mobile, close sidebar and switch to notes tab
+      if (isMobile) {
+        setOpenMobile(false);
+        // Switch to notes tab
+        const activeTabKey = 'bible-mobile-active-tab';
+        localStorage.setItem(activeTabKey, 'notes');
+        // Dispatch custom event to notify ResizablePanels to switch tabs
+        window.dispatchEvent(new CustomEvent('mobile-tab-switch', { detail: 'notes' }));
+      }
     }
   };
 

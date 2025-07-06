@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useRef, TouchEvent } from 'react';
 import {
   Panel,
   PanelGroup,
@@ -28,6 +28,11 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
   const [activeTab, setActiveTab] = useState<string>('chat');
   const { book, chapter } = useScripture();
   const { toggleSidebar } = useSidebar();
+  
+  // Swipe gesture state
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const minSwipeDistance = 50;
 
   // Load saved layout after mount to avoid hydration mismatch
   useEffect(() => {
@@ -54,6 +59,21 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
     }
   }, [isMobile]);
 
+  // Listen for mobile tab switch events
+  useEffect(() => {
+    const handleTabSwitch = (event: any) => {
+      const tab = event.detail;
+      if (tab && ['scripture', 'notes', 'chat'].includes(tab)) {
+        setActiveTab(tab);
+      }
+    };
+
+    window.addEventListener('mobile-tab-switch', handleTabSwitch);
+    return () => {
+      window.removeEventListener('mobile-tab-switch', handleTabSwitch);
+    };
+  }, []);
+
   // Save panel layout to localStorage
   const onLayout = (sizes: number[]) => {
     const key = isMobile ? 'bible-panels-mobile-3col' : 'bible-panels-desktop-3col';
@@ -66,12 +86,51 @@ export function ResizablePanels({ scriptureContent, notesContent, chatContent }:
     localStorage.setItem('bible-mobile-active-tab', value);
   };
 
+  // Handle swipe gestures
+  const handleTouchStart = (e: TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isSwipeLeft = distance > minSwipeDistance;
+    const isSwipeRight = distance < -minSwipeDistance;
+    
+    if (isSwipeLeft || isSwipeRight) {
+      const tabs = ['scripture', 'notes', 'chat'];
+      const currentIndex = tabs.indexOf(activeTab);
+      
+      if (isSwipeLeft && currentIndex < tabs.length - 1) {
+        // Swipe left - go to next tab
+        handleTabChange(tabs[currentIndex + 1]);
+      } else if (isSwipeRight && currentIndex > 0) {
+        // Swipe right - go to previous tab
+        handleTabChange(tabs[currentIndex - 1]);
+      }
+    }
+    
+    // Reset values
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   // On mobile, use tabs for better navigation
   if (isMobile) {
     return (
       <>
         <FloatingSidebarToggle className="hidden" />
-        <div className="flex flex-col h-screen w-full overflow-hidden">
+        <div 
+          className="flex flex-col h-screen w-full overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <Tabs 
             value={activeTab} 
             onValueChange={handleTabChange}
