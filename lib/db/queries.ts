@@ -10,6 +10,7 @@ import {
   gte,
   inArray,
   lt,
+  lte,
   type SQL,
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -29,6 +30,7 @@ import {
   stream,
   note,
   type Note,
+  verseNote,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
 import { generateUUID } from '../utils';
@@ -657,6 +659,203 @@ export async function deleteNoteById({
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to delete note by id',
+    );
+  }
+}
+
+// Verse Note queries
+export async function saveVerseNote({
+  id,
+  userId,
+  book,
+  chapter,
+  verseStart,
+  verseEnd,
+  translation,
+  content,
+  verseText,
+}: {
+  id: string;
+  userId: string;
+  book: string;
+  chapter: string;
+  verseStart: string;
+  verseEnd?: string;
+  translation: string;
+  content: string;
+  verseText?: string;
+}) {
+  try {
+    const verseNoteData = {
+      id,
+      userId,
+      book,
+      chapter,
+      verseStart,
+      verseEnd,
+      translation,
+      content,
+      verseText,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    const result = await db.insert(verseNote).values(verseNoteData);
+    return result;
+  } catch (error) {
+    console.error('Database error in saveVerseNote:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to save verse note');
+  }
+}
+
+export async function updateVerseNote({
+  id,
+  userId,
+  content,
+}: {
+  id: string;
+  userId: string;
+  content: string;
+}) {
+  try {
+    return await db
+      .update(verseNote)
+      .set({ content, updatedAt: new Date() })
+      .where(and(eq(verseNote.id, id), eq(verseNote.userId, userId)));
+  } catch (error) {
+    throw new ChatSDKError('bad_request:database', 'Failed to update verse note');
+  }
+}
+
+export async function getVerseNotesByUserId({
+  userId,
+  limit = 100,
+}: {
+  userId: string;
+  limit?: number;
+}) {
+  try {
+    return await db
+      .select()
+      .from(verseNote)
+      .where(eq(verseNote.userId, userId))
+      .orderBy(desc(verseNote.updatedAt))
+      .limit(limit);
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get verse notes by user id',
+    );
+  }
+}
+
+export async function getVerseNotesByReference({
+  userId,
+  book,
+  chapter,
+  verseStart,
+  verseEnd,
+}: {
+  userId: string;
+  book: string;
+  chapter: string;
+  verseStart?: string;
+  verseEnd?: string;
+}) {
+  try {
+    const conditions = [
+      eq(verseNote.userId, userId),
+      eq(verseNote.book, book),
+      eq(verseNote.chapter, chapter),
+    ];
+    
+    if (verseStart) {
+      // Get notes that include this verse
+      conditions.push(lte(verseNote.verseStart, verseStart));
+      if (verseEnd) {
+        conditions.push(gte(verseNote.verseEnd || verseNote.verseStart, verseEnd));
+      } else {
+        conditions.push(gte(verseNote.verseEnd || verseNote.verseStart, verseStart));
+      }
+    }
+    
+    return await db
+      .select()
+      .from(verseNote)
+      .where(and(...conditions))
+      .orderBy(asc(verseNote.verseStart));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get verse notes by reference',
+    );
+  }
+}
+
+export async function getVerseNoteById({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  try {
+    const [selectedNote] = await db
+      .select()
+      .from(verseNote)
+      .where(and(eq(verseNote.id, id), eq(verseNote.userId, userId)));
+    return selectedNote;
+  } catch (error) {
+    throw new ChatSDKError('bad_request:database', 'Failed to get verse note by id');
+  }
+}
+
+export async function deleteVerseNoteById({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  try {
+    const [deletedNote] = await db
+      .delete(verseNote)
+      .where(and(eq(verseNote.id, id), eq(verseNote.userId, userId)))
+      .returning();
+    return deletedNote;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to delete verse note by id',
+    );
+  }
+}
+
+export async function getVerseNotesForChapter({
+  userId,
+  book,
+  chapter,
+}: {
+  userId: string;
+  book: string;
+  chapter: string;
+}) {
+  try {
+    return await db
+      .select()
+      .from(verseNote)
+      .where(
+        and(
+          eq(verseNote.userId, userId),
+          eq(verseNote.book, book),
+          eq(verseNote.chapter, chapter)
+        )
+      )
+      .orderBy(asc(verseNote.verseStart));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get verse notes for chapter',
     );
   }
 }

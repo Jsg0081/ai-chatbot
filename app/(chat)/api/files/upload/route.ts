@@ -8,6 +8,10 @@ import { auth } from '@/app/(auth)/auth';
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout for large files
 
+// Route segment config to increase body size limit
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Use Blob instead of File since File is not available in Node.js environment
 const FileSchema = z.object({
   file: z
@@ -40,7 +44,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const formData = await request.formData();
+    // Check content length header
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 100 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'File size should be less than 100MB' },
+        { status: 413 }
+      );
+    }
+
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch (error) {
+      console.error('FormData parsing error:', error);
+      return NextResponse.json(
+        { error: 'File too large or invalid format. Maximum size is 100MB.' },
+        { status: 413 }
+      );
+    }
     const file = formData.get('file') as Blob;
 
     if (!file) {

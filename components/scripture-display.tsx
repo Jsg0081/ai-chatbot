@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpenIcon, Music } from 'lucide-react';
+import { BookOpenIcon, Music, StickyNote, X } from 'lucide-react';
 import { useVerse } from '@/lib/verse-context';
 import { BIBLE_BOOKS_DATA } from './bible-books';
 import { SpotifySearchModal } from './spotify-search-modal';
@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { OnboardingTooltip } from './onboarding-tooltip';
 import { useSession } from 'next-auth/react';
+import { VerseNoteDialog } from './verse-note-dialog';
 
 interface ScriptureDisplayProps {
   book: string;
@@ -73,6 +74,28 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasShownOnboarding, setHasShownOnboarding] = useState(false);
   
+  // Verse notes state
+  const [verseNotes, setVerseNotes] = useState<Record<string, any>>({});
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [selectedVerseForNote, setSelectedVerseForNote] = useState<{
+    book: string;
+    chapter: number;
+    verse: number;
+    endVerse?: number;
+    text: string;
+    translation: string;
+  } | null>(null);
+  const [existingNote, setExistingNote] = useState<{ id: string; content: string } | null>(null);
+  
+  // Long press state for mobile
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [mobileMenuVerse, setMobileMenuVerse] = useState<Verse | null>(null);
+  const [mobileMenuPosition, setMobileMenuPosition] = useState({ x: 0, y: 0 });
+  
+  // Mobile hint state
+  const [showMobileHint, setShowMobileHint] = useState(false);
+  
   // Check if mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -82,6 +105,18 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+  
+  // Show mobile hint
+  useEffect(() => {
+    if (isMobile && !localStorage.getItem('mobile-verse-hint-dismissed')) {
+      setShowMobileHint(true);
+    }
+  }, [isMobile]);
+  
+  const dismissMobileHint = () => {
+    setShowMobileHint(false);
+    localStorage.setItem('mobile-verse-hint-dismissed', 'true');
+  };
 
   // Onboarding logic for guest users
   useEffect(() => {
@@ -284,6 +319,119 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
     console.log(`Selected book: ${bookName}`);
   };
 
+  // Load verse notes for current chapter
+  useEffect(() => {
+    const loadVerseNotes = async () => {
+      if (!session.data?.user || session.data.user.type === 'guest') return;
+      
+      try {
+        const response = await fetch(
+          `/api/verse-notes?book=${encodeURIComponent(book)}&chapter=${chapter}`
+        );
+        if (response.ok) {
+          const notes = await response.json();
+          const notesMap: Record<string, any> = {};
+          notes.forEach((note: any) => {
+            const key = `${note.verseStart}${note.verseEnd ? `-${note.verseEnd}` : ''}`;
+            notesMap[key] = note;
+          });
+          setVerseNotes(notesMap);
+        }
+      } catch (err) {
+        console.error('Failed to load verse notes:', err);
+      }
+    };
+
+    loadVerseNotes();
+  }, [book, chapter, session.data?.user]);
+
+  const handleAddNoteClick = (verse: Verse) => {
+    // Check if there's an existing note for this verse
+    const noteKey = verse.verse.toString();
+    const existing = verseNotes[noteKey];
+    
+    setSelectedVerseForNote({
+      book,
+      chapter,
+      verse: verse.verse,
+      text: verse.text,
+      translation: scripture?.translation_name || 'King James Version',
+    });
+    
+    if (existing) {
+      setExistingNote({ id: existing.id, content: existing.content });
+    } else {
+      setExistingNote(null);
+    }
+    
+    setShowNoteDialog(true);
+  };
+
+  const handleNoteSaved = () => {
+    // Reload verse notes
+    const loadVerseNotes = async () => {
+      if (!session.data?.user || session.data.user.type === 'guest') return;
+      
+      try {
+        const response = await fetch(
+          `/api/verse-notes?book=${encodeURIComponent(book)}&chapter=${chapter}`
+        );
+        if (response.ok) {
+          const notes = await response.json();
+          const notesMap: Record<string, any> = {};
+          notes.forEach((note: any) => {
+            const key = `${note.verseStart}${note.verseEnd ? `-${note.verseEnd}` : ''}`;
+            notesMap[key] = note;
+          });
+          setVerseNotes(notesMap);
+        }
+      } catch (err) {
+        console.error('Failed to reload verse notes:', err);
+      }
+    };
+
+    loadVerseNotes();
+  };
+
+  // Handle long press for mobile
+  const handleTouchStart = (e: React.TouchEvent, verse: Verse) => {
+    if (!isMobile) return;
+    
+    const touch = e.touches[0];
+    const timer = setTimeout(() => {
+      // Trigger haptic feedback if available
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+      
+      setMobileMenuVerse(verse);
+      setMobileMenuPosition({ x: touch.clientX, y: touch.clientY });
+      setShowMobileMenu(true);
+    }, 500); // 500ms for long press
+    
+    setLongPressTimer(timer);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleTouchMove = () => {
+    // Cancel long press if user moves finger
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const closeMobileMenu = () => {
+    setShowMobileMenu(false);
+    setMobileMenuVerse(null);
+  };
+
   if (loading) {
     return (
       <Card className="p-6 h-full">
@@ -464,6 +612,24 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
           "flex-1 overflow-auto bg-background",
           isMobile ? "p-4 pb-20" : "p-4 sm:p-6 lg:p-8"
         )}>
+          {/* Mobile hint banner */}
+          {isMobile && showMobileHint && (
+            <div className="bg-cyan-950/10 dark:bg-[#00e599]/10 border border-cyan-950/20 dark:border-[#00e599]/20 rounded-lg p-3 mb-4 flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <p className="text-sm text-cyan-950 dark:text-[#00e599]">
+                  <strong>Tip:</strong> Long press on any verse to add notes or search on Spotify
+                </p>
+              </div>
+              <button
+                onClick={dismissMobileHint}
+                className="text-cyan-950 dark:text-[#00e599] hover:opacity-70"
+                aria-label="Dismiss hint"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          
           <div className="max-w-3xl mx-auto">
             {paragraphs.map((paragraph, index) => (
               <p 
@@ -474,71 +640,151 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
               >
                 {paragraph.map((verse, verseIndex) => {
                   const isSelected = isVerseSelected(book, chapter, verse.verse);
+                  const hasNote = !!verseNotes[verse.verse.toString()];
                   return (
-                    <ContextMenu key={verse.verse}>
-                      <ContextMenuTrigger asChild>
+                    <React.Fragment key={verse.verse}>
+                      {/* Use ContextMenu for desktop, touch handlers for mobile */}
+                      {!isMobile ? (
+                        <ContextMenu>
+                          <ContextMenuTrigger asChild>
+                            <span 
+                              className={`
+                                group cursor-pointer rounded px-1 -mx-1 transition-all
+                                select-none relative inline
+                                ${isSelected && isDragging ? 'opacity-50' : ''}
+                                ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#00e599]/10 dark:text-[#00e599]' : ''}
+                              `}
+                              onClick={(e) => {
+                                // Only handle click if not right-clicking
+                                if (e.button === 0) {
+                                  handleVerseClick(verse);
+                                }
+                              }}
+                              onMouseDown={(e) => {
+                                // Reset any stuck state on mouse down
+                                e.currentTarget.style.pointerEvents = '';
+                              }}
+                              draggable={isSelected}
+                              onDragStart={handleDragStart}
+                              onDragEnd={handleDragEnd}
+                              title={isSelected ? 'Drag to notes editor' : 'Click to select'}
+                            >
+                              <sup className={`
+                                text-[10px] sm:text-xs mr-1 font-bold transition-colors
+                                ${isSelected 
+                                  ? 'text-cyan-950 dark:text-[#00e599]' 
+                                  : 'text-primary group-hover:text-primary/80'
+                                }
+                              `}>
+                                {verse.verse}
+                              </sup>
+                              <span className={`
+                                transition-colors text-sm sm:text-base
+                                ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
+                              `}>
+                                {verse.text}
+                              </span>
+                              {hasNote && (
+                                <StickyNote className="inline-block w-3 h-3 ml-1 text-cyan-950 dark:text-[#00e599]" />
+                              )}
+                            </span>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent 
+                            className="w-48 z-[100]"
+                            onCloseAutoFocus={(e) => {
+                              // Prevent the context menu from stealing focus
+                              e.preventDefault();
+                            }}
+                            onInteractOutside={() => {
+                              // Ensure we can interact with verses again
+                              setTimeout(() => {
+                                // Force all verse elements to be interactive again
+                                const verseElements = document.querySelectorAll('[title*="Click to select"], [title*="Drag to notes"]');
+                                verseElements.forEach(el => {
+                                  (el as HTMLElement).style.pointerEvents = '';
+                                });
+                              }, 0);
+                            }}
+                          >
+                            <ContextMenuItem 
+                              onClick={() => {
+                                handleVerseClick(verse);
+                              }}
+                              className="gap-2 text-sm cursor-pointer"
+                            >
+                              {isSelected ? 'Deselect' : 'Select'} Verse
+                            </ContextMenuItem>
+                            <ContextMenuItem 
+                              onClick={() => {
+                                // Close context menu first
+                                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                // Small delay to ensure context menu is closed
+                                setTimeout(() => {
+                                  handleAddNoteClick(verse);
+                                }, 50);
+                              }}
+                              className="gap-2 text-sm cursor-pointer"
+                            >
+                              <StickyNote className="h-4 w-4 text-cyan-950 dark:text-[#00e599]" />
+                              {hasNote ? 'Edit Note' : 'Add Note'}
+                            </ContextMenuItem>
+                            <ContextMenuItem 
+                              onClick={() => {
+                                console.log('Spotify menu item clicked');
+                                // Close context menu first
+                                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                // Small delay to ensure context menu is closed
+                                setTimeout(() => {
+                                  setSpotifySearchVerse(verse);
+                                  setShowSpotifyModal(true);
+                                }, 50);
+                              }}
+                              className="gap-2 text-sm cursor-pointer"
+                            >
+                              <Music className="h-4 w-4" />
+                              Search on Spotify
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      ) : (
+                        // Mobile version with touch handlers
                         <span 
                           className={`
                             group cursor-pointer rounded px-1 -mx-1 transition-all
-                            touch-manipulation select-none
+                            select-none relative inline
+                            touch-manipulation
+                            active:scale-95 active:transition-transform
                             ${isSelected && isDragging ? 'opacity-50' : ''}
-                            ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#00e599]/10 dark:text-[#00e599]' : ''}
+                            ${isSelected ? 'bg-cyan-300/40 text-cyan-950 dark:bg-[#00e599]/10 dark:text-[#00e599]' : ''}
                           `}
-                          onClick={(e) => {
-                            // Only handle click if not right-clicking
-                            if (e.button === 0) {
-                              handleVerseClick(verse);
-                            }
-                          }}
-                          onContextMenu={(e) => {
-                            // Prevent default browser context menu
-                            e.preventDefault();
-                          }}
-                          draggable={isSelected}
-                          onDragStart={handleDragStart}
-                          onDragEnd={handleDragEnd}
-                          title={isSelected ? 'Drag to notes editor' : 'Click to select'}
+                          onClick={() => handleVerseClick(verse)}
+                          onTouchStart={(e) => handleTouchStart(e, verse)}
+                          onTouchEnd={handleTouchEnd}
+                          onTouchMove={handleTouchMove}
+                          title="Tap to select, hold for options"
                         >
                           <sup className={`
                             text-[10px] sm:text-xs mr-1 font-bold transition-colors
                             ${isSelected 
                               ? 'text-cyan-950 dark:text-[#00e599]' 
-                              : 'text-primary group-hover:text-primary/80'
+                              : 'text-primary'
                             }
                           `}>
                             {verse.verse}
                           </sup>
                           <span className={`
                             transition-colors text-sm sm:text-base
-                            ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
+                            ${!isSelected && 'text-foreground/90'}
                           `}>
                             {verse.text}
                           </span>
-                          {verseIndex < paragraph.length - 1 && ' '}
+                          {hasNote && (
+                            <StickyNote className="inline-block w-3 h-3 ml-1 text-cyan-950 dark:text-[#00e599]" />
+                          )}
                         </span>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent className="w-48">
-                        <ContextMenuItem 
-                          onClick={() => handleVerseClick(verse)}
-                          className="gap-2 text-sm"
-                        >
-                          {isSelected ? 'Deselect' : 'Select'} Verse
-                        </ContextMenuItem>
-                        <ContextMenuItem 
-                          onSelect={(e) => {
-                            // Prevent default behavior
-                            e.preventDefault();
-                            // Set the verse for Spotify search
-                            setSpotifySearchVerse(verse);
-                            setShowSpotifyModal(true);
-                          }}
-                          className="gap-2 text-sm"
-                        >
-                          <Music className="h-4 w-4" />
-                          Search on Spotify
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
+                      )}
+                      {verseIndex < paragraph.length - 1 && ' '}
+                    </React.Fragment>
                   );
                 })}
               </p>
@@ -549,7 +795,30 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
       
       <SpotifySearchModal 
         open={showSpotifyModal}
-        onOpenChange={setShowSpotifyModal}
+        onOpenChange={(open) => {
+          setShowSpotifyModal(open);
+          if (!open) {
+            // Force cleanup when dialog closes
+            setTimeout(() => {
+              // Remove any lingering overlays
+              const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
+              overlays.forEach(overlay => overlay.remove());
+              
+              // Reset body styles that might have been set
+              document.body.style.pointerEvents = '';
+              document.body.style.overflow = '';
+              
+              // Force focus back to body
+              document.body.focus();
+              
+              // Ensure all interactive elements are clickable
+              const interactiveElements = document.querySelectorAll('button, a, [role="button"], [tabindex], input, textarea, select');
+              interactiveElements.forEach(el => {
+                (el as HTMLElement).style.pointerEvents = '';
+              });
+            }, 100);
+          }
+        }}
         verses={spotifySearchVerse ? [{
           book,
           chapter,
@@ -558,6 +827,89 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
           translation: scripture?.translation_name || 'King James Version',
         }] : undefined}
       />
+      
+      <VerseNoteDialog
+        open={showNoteDialog}
+        onOpenChange={(open) => {
+          setShowNoteDialog(open);
+          if (!open) {
+            // Force cleanup when dialog closes
+            setTimeout(() => {
+              // Remove any lingering overlays
+              const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
+              overlays.forEach(overlay => overlay.remove());
+              
+              // Reset body styles that might have been set
+              document.body.style.pointerEvents = '';
+              document.body.style.overflow = '';
+              
+              // Force focus back to body
+              document.body.focus();
+              
+              // Ensure all interactive elements are clickable
+              const interactiveElements = document.querySelectorAll('button, a, [role="button"], [tabindex], input, textarea, select');
+              interactiveElements.forEach(el => {
+                (el as HTMLElement).style.pointerEvents = '';
+              });
+            }, 100);
+          }
+        }}
+        verse={selectedVerseForNote}
+        existingNote={existingNote}
+        onNoteSaved={handleNoteSaved}
+      />
+      
+      {/* Mobile Long Press Menu */}
+      {showMobileMenu && mobileMenuVerse && (
+        <>
+          {/* Backdrop to close menu when tapping outside */}
+          <div 
+            className="fixed inset-0 z-[200]" 
+            onClick={closeMobileMenu}
+          />
+          {/* Menu */}
+          <div 
+            className="fixed z-[201] bg-background border rounded-lg shadow-lg p-1 min-w-[200px]"
+            style={{
+              left: `${Math.min(mobileMenuPosition.x, window.innerWidth - 220)}px`,
+              top: `${Math.min(mobileMenuPosition.y, window.innerHeight - 150)}px`,
+            }}
+          >
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded flex items-center gap-2"
+              onClick={() => {
+                const verse = mobileMenuVerse;
+                const isSelected = isVerseSelected(book, chapter, verse.verse);
+                handleVerseClick(verse);
+                closeMobileMenu();
+              }}
+            >
+              {isVerseSelected(book, chapter, mobileMenuVerse.verse) ? 'Deselect' : 'Select'} Verse
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded flex items-center gap-2"
+              onClick={() => {
+                handleAddNoteClick(mobileMenuVerse);
+                closeMobileMenu();
+              }}
+            >
+              <StickyNote className="h-4 w-4 text-cyan-950 dark:text-[#00e599]" />
+              {verseNotes[mobileMenuVerse.verse.toString()] ? 'Edit Note' : 'Add Note'}
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded flex items-center gap-2"
+              onClick={() => {
+                setSpotifySearchVerse(mobileMenuVerse);
+                setShowSpotifyModal(true);
+                closeMobileMenu();
+              }}
+            >
+              <Music className="h-4 w-4" />
+              Search on Spotify
+            </button>
+          </div>
+        </>
+      )}
     </>
   );
 } 

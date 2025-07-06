@@ -7,6 +7,7 @@ import { SidebarLeftIcon, SparkLogo } from '@/components/icons';
 import { BibleBooks } from '@/components/bible-books';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarNotesHistory } from '@/components/sidebar-notes-history';
+import { SidebarVerseNotes } from '@/components/sidebar-verse-notes';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { Button } from '@/components/ui/button';
 import {
@@ -103,6 +104,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <SidebarHistory user={user} />
         <SidebarSeparator />
         <SidebarNotesHistory />
+        <SidebarSeparator />
+        <SidebarVerseNotes />
       </SidebarContent>
       <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
     </Sidebar>

@@ -140,6 +140,24 @@ export const note = pgTable('Note', {
 
 export type Note = InferSelectModel<typeof note>;
 
+export const verseNote = pgTable('VerseNote', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  book: varchar('book', { length: 50 }).notNull(),
+  chapter: varchar('chapter', { length: 10 }).notNull(),
+  verseStart: varchar('verseStart', { length: 10 }).notNull(),
+  verseEnd: varchar('verseEnd', { length: 10 }),
+  translation: varchar('translation', { length: 50 }).notNull().default('ESV'),
+  content: text('content').notNull().default(''),
+  verseText: text('verseText'), // Store the actual verse text for reference
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type VerseNote = InferSelectModel<typeof verseNote>;
+
 export const suggestion = pgTable(
   'Suggestion',
   {
