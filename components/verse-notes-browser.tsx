@@ -207,7 +207,7 @@ export function VerseNotesBrowser() {
                                   </div>
                                   {note.verseText && (
                                     <p className="text-xs text-muted-foreground italic mb-2 line-clamp-2">
-                                      "{note.verseText}"
+                                      &ldquo;{note.verseText}&rdquo;
                                     </p>
                                   )}
                                   <p className="text-sm line-clamp-2">{note.content}</p>

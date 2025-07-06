@@ -147,7 +147,7 @@ export function VerseNoteDialog({
               {existingNote ? 'Edit Note' : 'Add Note'} for {verseReference}
             </DialogTitle>
             <DialogDescription className="text-sm italic mt-2">
-              "{verse.text}"
+              &ldquo;{verse.text}&rdquo;
             </DialogDescription>
           </DialogHeader>
           
