@@ -184,15 +184,12 @@ function BibleVerseTooltip({ reference, children }: { reference: string; childre
           <span
             className={`
               underline decoration-dotted cursor-pointer hover:decoration-solid transition-all inline-flex items-center gap-1
-              ${isSelected 
-                ? 'text-cyan-950 dark:text-[#00e599] bg-cyan-300/40 dark:bg-[#00e599]/10 px-1 rounded' 
-                : 'text-primary'
-              }
+              text-cyan-950 dark:text-[#00e599] bg-cyan-300/40 dark:bg-[#00e599]/10 px-1 mx-0.5 rounded
             `}
             onMouseEnter={() => fetchVerse()}
           >
             {children}
-            <BookOpenIcon className={`h-3 w-3 ${isSelected ? 'opacity-70' : 'opacity-50'}`} />
+            <BookOpenIcon className="h-3 w-3 opacity-70" />
           </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-md p-4" side="top">
@@ -272,7 +269,9 @@ export function BibleVerseParser({ children }: BibleVerseTooltipProps) {
       if (match.index >= lastIndex) {
         // Add text before the match
         if (match.index > lastIndex) {
-          parts.push(text.slice(lastIndex, match.index));
+          const textBefore = text.slice(lastIndex, match.index);
+          // Ensure we preserve any trailing space before the verse reference
+          parts.push(textBefore);
         }
         // Add the match
         parts.push(match.element);

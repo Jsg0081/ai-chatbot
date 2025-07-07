@@ -2,6 +2,9 @@
     "functions": {
         "app/api/knowledge-store/upload/route.ts": {
             "maxDuration": 60
+        },
+        "app/api/knowledge-store/blob-upload/route.ts": {
+            "maxDuration": 60
         }
     }
 }

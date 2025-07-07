@@ -174,13 +174,15 @@ export async function searchBibleVerse(verse: {
       
       // Filter results to ensure they're related to the specific verse/book
       if (results.episodes?.items) {
-        results.episodes.items = results.episodes.items.filter(episode => {
+        results.episodes.items = results.episodes.items.filter(episode => 
+          episode.name && episode.description != null
+        ).filter(episode => {
           const showName = episode.show?.name ?? '';
           const combined = `${episode.name} ${episode.description} ${showName}`.toLowerCase();
           
           // Check if it's Bible-related AND mentions the specific book
           return (
-            isBibleRelated(episode.name, episode.description) ||
+            isBibleRelated(episode.name, episode.description || '') ||
             isBibleRelated(showName, '')
           ) && (
             combined.includes(verse.book.toLowerCase()) ||
@@ -191,10 +193,12 @@ export async function searchBibleVerse(verse: {
       }
       
       if (results.audiobooks?.items) {
-        results.audiobooks.items = results.audiobooks.items.filter(book => {
-          const combined = `${book.name} ${book.description}`.toLowerCase();
+        results.audiobooks.items = results.audiobooks.items.filter(book => 
+          book.name && book.description != null
+        ).filter(book => {
+          const combined = `${book.name} ${book.description || ''}`.toLowerCase();
           
-          return isBibleRelated(book.name, book.description) && (
+          return isBibleRelated(book.name, book.description || '') && (
             combined.includes(verse.book.toLowerCase()) ||
             combined.includes(`${verse.chapter}:${verse.verse}`) ||
             combined.includes(`chapter ${verse.chapter}`)
@@ -220,15 +224,19 @@ export async function searchBibleVerse(verse: {
     
     // Still filter by book name at minimum
     if (broadResults.episodes?.items) {
-      broadResults.episodes.items = broadResults.episodes.items.filter(episode => {
-        const combined = `${episode.name} ${episode.description} ${episode.show?.name || ''}`.toLowerCase();
+      broadResults.episodes.items = broadResults.episodes.items.filter(episode => 
+        episode.name && episode.description != null
+      ).filter(episode => {
+        const combined = `${episode.name} ${episode.description || ''} ${episode.show?.name || ''}`.toLowerCase();
         return combined.includes(verse.book.toLowerCase());
       });
     }
     
     if (broadResults.audiobooks?.items) {
-      broadResults.audiobooks.items = broadResults.audiobooks.items.filter(book => {
-        const combined = `${book.name} ${book.description}`.toLowerCase();
+      broadResults.audiobooks.items = broadResults.audiobooks.items.filter(book => 
+        book.name && book.description != null
+      ).filter(book => {
+        const combined = `${book.name} ${book.description || ''}`.toLowerCase();
         return combined.includes(verse.book.toLowerCase());
       });
     }

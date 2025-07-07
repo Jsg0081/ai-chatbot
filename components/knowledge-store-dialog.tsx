@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Upload, FileText, X, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { upload } from '@vercel/blob/client';
 
 interface KnowledgeStoreDialogProps {
   open: boolean;
@@ -96,10 +97,10 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const maxSize = 20 * 1024 * 1024; // 20MB limit
+      const maxSize = 500 * 1024 * 1024; // 500MB limit (Vercel Blob limit)
       if (file.size > maxSize) {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-        toast.error(`File size (${sizeMB}MB) exceeds the 20MB limit. Please use a smaller file.`);
+        toast.error(`File size (${sizeMB}MB) exceeds the 500MB limit. Please use a smaller file.`);
         return;
       }
       setSelectedFile(file);
@@ -122,10 +123,10 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
     
     const file = e.dataTransfer.files[0];
     if (file) {
-      const maxSize = 20 * 1024 * 1024; // 20MB limit
+      const maxSize = 500 * 1024 * 1024; // 500MB limit (Vercel Blob limit)
       if (file.size > maxSize) {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-        toast.error(`File size (${sizeMB}MB) exceeds the 20MB limit. Please use a smaller file.`);
+        toast.error(`File size (${sizeMB}MB) exceeds the 500MB limit. Please use a smaller file.`);
         return;
       }
       setSelectedFile(file);
@@ -139,22 +140,15 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
     }
 
     setLoading(true);
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    if (name) {
-      formData.append('name', name);
-    }
-
     try {
-      const response = await fetch('/api/knowledge-store/upload', {
-        method: 'POST',
-        body: formData,
+      // Use the original filename or the custom name if provided
+      const filename = name || selectedFile.name;
+      
+      // Upload directly to Vercel Blob
+      const blob = await upload(filename, selectedFile, {
+        access: 'public',
+        handleUploadUrl: '/api/knowledge-store/blob-upload',
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to upload');
-      }
 
       toast.success('File uploaded successfully');
       setSelectedFile(null);
@@ -381,7 +375,7 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
                 {selectedFile ? selectedFile.name : 'Drop a file here or click to browse'}
               </p>
               <p className="text-xs text-muted-foreground">
-                Supports PDF, DOCX, TXT, RTF, CSV, MD, HTML (Max 20MB)
+                Supports PDF, DOCX, TXT, RTF, CSV, MD, HTML (Max 500MB via Vercel Blob)
               </p>
               <input
                 id="file-upload"
