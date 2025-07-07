@@ -201,3 +201,20 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const knowledgeStore = pgTable('KnowledgeStore', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  name: text('name').notNull(),
+  type: varchar('type', { enum: ['file', 'text', 'url'] }).notNull(),
+  content: text('content'), // For text type or file content
+  url: text('url'), // For URL type
+  fileData: json('fileData'), // For storing file metadata (original name, mime type, etc.)
+  size: varchar('size', { length: 20 }), // Human-readable size (e.g., "83.4 kB")
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type KnowledgeStore = InferSelectModel<typeof knowledgeStore>;

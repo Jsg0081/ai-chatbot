@@ -64,6 +64,13 @@
       "when": 1751800000000,
       "tag": "0008_verse_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1751862333359,
+      "tag": "0009_talented_justice",
+      "breakpoints": true
     }
   ]
 }

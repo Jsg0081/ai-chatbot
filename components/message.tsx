@@ -175,11 +175,16 @@ const PurePreviewMessage = ({
                     <div
                       key={toolCallId}
                       className={cx({
-                        skeleton: ['getWeather'].includes(toolName),
+                        skeleton: ['getWeather', 'getKnowledge'].includes(toolName),
                       })}
                     >
                       {toolName === 'getWeather' ? (
                         <Weather />
+                      ) : toolName === 'getKnowledge' ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <SparklesIcon size={14} />
+                          <span>Searching knowledge store...</span>
+                        </div>
                       ) : toolName === 'createDocument' ? (
                         <DocumentPreview isReadonly={isReadonly} args={args} />
                       ) : toolName === 'updateDocument' ? (
@@ -206,6 +211,20 @@ const PurePreviewMessage = ({
                     <div key={toolCallId}>
                       {toolName === 'getWeather' ? (
                         <Weather weatherAtLocation={result} />
+                      ) : toolName === 'getKnowledge' ? (
+                        <div className="text-sm text-muted-foreground">
+                          {result.found ? (
+                            <div className="flex items-center gap-2">
+                              <SparklesIcon size={14} />
+                              <span>Retrieved {result.count} document{result.count !== 1 ? 's' : ''} from knowledge store</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <SparklesIcon size={14} />
+                              <span>{result.message || 'No documents found'}</span>
+                            </div>
+                          )}
+                        </div>
                       ) : toolName === 'createDocument' ? (
                         <DocumentPreview
                           isReadonly={isReadonly}

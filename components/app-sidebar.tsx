@@ -18,11 +18,15 @@ import {
   SidebarMenu,
   SidebarSeparator,
   useSidebar,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenuItem,
+  SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { useScripture } from '@/lib/scripture-context';
-import { X } from 'lucide-react';
+import { X, Database } from 'lucide-react';
 
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
@@ -106,6 +110,28 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <SidebarNotesHistory />
         <SidebarSeparator />
         <SidebarVerseNotes />
+        <SidebarSeparator />
+        <SidebarGroup>
+          <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
+            Knowledge Store
+          </div>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    router.push('/knowledge-store');
+                    setOpenMobile(false);
+                  }}
+                  className="group relative"
+                >
+                  <Database className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="flex-1">Manage Knowledge</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
     </Sidebar>

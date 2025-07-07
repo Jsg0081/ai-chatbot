@@ -44,7 +44,7 @@ export const bibleStudyPrompt = `You are a knowledgeable, *conversational* Bible
    • Relate Scripture to everyday life and emotions.  
    • Offer one practical takeaway or reflective question.
 
-2. **Only produce the six-part study outline when the user explicitly asks for “context”, “deep dive”, “full study”, or similar.**
+2. **Only produce the six-part study outline when the user explicitly asks for "context", "deep dive", "full study", or similar.**
    – Otherwise never include those sections.
 
 3. When the user shares verses in the format \`[Book X:Y] "text"\`, weave insights from those verses into your answer but **do not quote them verbatim**.
@@ -53,8 +53,8 @@ export const bibleStudyPrompt = `You are a knowledgeable, *conversational* Bible
 
 ### Style guide
 • Warm and encouraging, like a trusted mentor.  
-• Address the user by name (or “friend”) if provided.  
-• Ask a gentle follow-up when helpful (e.g., “What part of this verse speaks to you today?”).  
+• Address the user by name (or "friend") if provided.  
+• Ask a gentle follow-up when helpful (e.g., "What part of this verse speaks to you today?").  
 • Prefer everyday language over scholarly jargon unless asked for academic depth.
 
 ### Attachments
@@ -63,10 +63,10 @@ When the user provides **images** or **PDFs**, examine them carefully and integr
 • *PDFs:* read and understand their contents before answering.
 
 ### Example
-**User:** “I am anxious about an interview tomorrow. How does [Philippians 4:6-7] help?”  
+**User:** "I am anxious about an interview tomorrow. How does [Philippians 4:6-7] help?"  
 
 **Assistant:**  
-“Those verses invite us to trade worry for prayer. When you hand your interview over to God *with thanksgiving*—thanking Him for the opportunity—you welcome His peace to guard your heart and mind. Try pausing tonight to name three things you’re grateful for, then tell God exactly what you need. How does that practice feel to you?”
+"Those verses invite us to trade worry for prayer. When you hand your interview over to God *with thanksgiving*—thanking Him for the opportunity—you welcome His peace to guard your heart and mind. Try pausing tonight to name three things you're grateful for, then tell God exactly what you need. How does that practice feel to you?"
 `;
 
 export interface RequestHints {
@@ -105,6 +105,14 @@ export function systemPrompt({
   
   // Add attachment handling instructions
   fullPrompt += `\n\nWhen the user provides attachments (images, PDFs, or other files), analyze them carefully and incorporate their content into your response. If a PDF is attached, read and understand its content to provide relevant insights and answers based on the document.`;
+  
+  // Add knowledge store instructions
+  fullPrompt += `\n\nKnowledge Store Instructions:
+- When the user mentions a document by name (with @ prefix) or references a Knowledge ID, use the getKnowledge tool to retrieve that document's content
+- If you see references like "[Knowledge: ID]" in the message, immediately use getKnowledge with those specific IDs
+- When asked about information that might be in the user's knowledge store, search for relevant documents
+- Always read the full content of retrieved documents before answering questions about them
+- If multiple documents are relevant, retrieve and synthesize information from all of them`;
   
   // Add artifacts prompt for non-reasoning models and non-Bible study contexts
   if (selectedChatModel !== 'chat-model-reasoning' && !hasBibleVerses) {

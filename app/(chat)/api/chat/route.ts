@@ -23,6 +23,7 @@ import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
+import { getKnowledge } from '@/lib/ai/tools/get-knowledge';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
@@ -37,6 +38,9 @@ import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
 import { ChatSDKError } from '@/lib/errors';
 import { extractTextFromPDF } from '@/lib/pdf-utils';
+import { knowledgeStore } from '@/lib/db/schema';
+import { db } from '@/lib/db';
+import { eq, and, inArray } from 'drizzle-orm';
 
 export const maxDuration = 60;
 
@@ -122,6 +126,41 @@ export async function POST(request: Request) {
       parts: message.parts,
     });
 
+    // Check for Knowledge Store references and fetch content BEFORE appending message
+    const messageContent = message.content || '';
+    const messageParts = message.parts || [];
+    
+    // Get text from either content or parts
+    let messageText = messageContent;
+    if (!messageText && messageParts.length > 0) {
+      messageText = messageParts.map(part => 
+        part.type === 'text' ? part.text : ''
+      ).join(' ');
+    }
+    
+    // Check for Knowledge Store references
+    const knowledgePattern = /\[Knowledge:\s*([a-zA-Z0-9-]+)\]/g;
+    const knowledgeMatches = [...messageText.matchAll(knowledgePattern)];
+    const knowledgeIds = knowledgeMatches.map(match => match[1]);
+    
+    // Also check for @mentions
+    const mentionPattern = /@(\w+)/g;
+    const mentionMatches = [...messageText.matchAll(mentionPattern)];
+    const mentionedNames = mentionMatches.map(match => match[1]);
+    
+    // Add knowledge context to the system prompt if references are found
+    let knowledgeContext = '';
+    if (knowledgeIds.length > 0 || mentionedNames.length > 0) {
+      knowledgeContext = '\n\nThe user has referenced the following knowledge store items:';
+      if (knowledgeIds.length > 0) {
+        knowledgeContext += `\n- Knowledge IDs: ${knowledgeIds.join(', ')}`;
+      }
+      if (mentionedNames.length > 0) {
+        knowledgeContext += `\n- Document names: ${mentionedNames.join(', ')}`;
+      }
+      knowledgeContext += '\n\nUse the getKnowledge tool to retrieve these documents before answering.';
+    }
+
     // Ensure the message includes experimental_attachments
     const formattedMessage = {
       ...message,
@@ -149,6 +188,11 @@ export async function POST(request: Request) {
 
     // Transform messages to handle attachments properly
     const transformedMessages = await Promise.all(messages.map(async (msg: any) => {
+      // For the current message being sent, ensure it has the knowledge content
+      if (msg.id === formattedMessage.id && msg.content) {
+        console.log('Processing current message with potential knowledge content');
+      }
+      
       if (msg.experimental_attachments && msg.experimental_attachments.length > 0) {
         console.log('Transforming message with attachments:', {
           originalContent: msg.content,
@@ -159,7 +203,7 @@ export async function POST(request: Request) {
         const contentParts = [];
         let extractedPdfText = '';
         
-        // Add text content if present
+        // Add text content if present (this includes knowledge content)
         if (msg.content) {
           contentParts.push({
             type: 'text',
@@ -226,7 +270,7 @@ export async function POST(request: Request) {
         };
       }
       
-      // Return message as-is if no attachments
+      // Return message as-is if no attachments (but it still includes knowledge content)
       return msg;
     }));
 
@@ -255,18 +299,6 @@ export async function POST(request: Request) {
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
 
-    // Check if the message contains Bible verse references
-    const messageContent = message.content || '';
-    const messageParts = message.parts || [];
-    
-    // Get text from either content or parts
-    let messageText = messageContent;
-    if (!messageText && messageParts.length > 0) {
-      messageText = messageParts.map(part => 
-        part.type === 'text' ? part.text : ''
-      ).join(' ');
-    }
-    
     // More robust Bible verse detection - check for multiple patterns
     const bibleVersePatterns = [
       /\[[A-Za-z0-9\s]+\s+\d+:\d+\]/,  // [Book Chapter:Verse]
@@ -282,9 +314,20 @@ export async function POST(request: Request) {
     console.log('Message parts:', messageParts);
     console.log('Extracted message text:', messageText);
     console.log('Has Bible verses:', hasBibleVerses);
+    console.log('Knowledge Store references:', knowledgeMatches.length);
 
     const stream = createDataStream({
       execute: (dataStream) => {
+        // Log the final message content for debugging
+        const lastMessage = transformedMessages[transformedMessages.length - 1];
+        console.log('Final message being sent to AI:', {
+          role: lastMessage.role,
+          contentType: typeof lastMessage.content,
+          contentLength: typeof lastMessage.content === 'string' ? lastMessage.content.length : 'complex',
+          hasKnowledgeContent: typeof lastMessage.content === 'string' ? lastMessage.content.includes('Knowledge Store Items') : false,
+          contentPreview: typeof lastMessage.content === 'string' ? lastMessage.content.substring(0, 500) + '...' : 'complex content',
+        });
+        
         console.log('Calling streamText with:', {
           model: selectedChatModel,
           messagesCount: transformedMessages.length,
@@ -302,17 +345,18 @@ export async function POST(request: Request) {
         
         const result = streamText({
           model,
-          system: systemPrompt({ selectedChatModel, requestHints, hasBibleVerses }),
+          system: systemPrompt({ selectedChatModel, requestHints, hasBibleVerses }) + knowledgeContext,
           messages: transformedMessages,
           maxSteps: 5,
           experimental_activeTools:
             selectedChatModel === 'chat-model-reasoning'
-              ? []
+              ? (knowledgeIds.length > 0 || mentionedNames.length > 0 ? ['getKnowledge'] : [])
               : [
                   'getWeather',
                   'createDocument',
                   'updateDocument',
                   'requestSuggestions',
+                  'getKnowledge',
                 ],
           experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_generateMessageId: generateUUID,
@@ -324,6 +368,7 @@ export async function POST(request: Request) {
               session,
               dataStream,
             }),
+            getKnowledge: getKnowledge({ session }),
           },
           onFinish: async ({ response }) => {
             if (session.user?.id) {
