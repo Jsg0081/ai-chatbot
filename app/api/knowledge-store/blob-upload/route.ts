@@ -11,10 +11,16 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     console.log('Blob upload request received');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Has BLOB_READ_WRITE_TOKEN:', !!process.env.BLOB_READ_WRITE_TOKEN);
     
     // Ensure we have the blob token
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      throw new Error('BLOB_READ_WRITE_TOKEN not configured');
+      console.error('BLOB_READ_WRITE_TOKEN is not configured');
+      return NextResponse.json(
+        { error: 'Blob storage is not properly configured. Please contact support.' },
+        { status: 500 }
+      );
     }
     
     const jsonResponse = await handleUpload({
@@ -27,6 +33,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const session = await auth();
         
         if (!session?.user?.id) {
+          console.error('No authenticated user found');
           throw new Error('Unauthorized');
         }
 
