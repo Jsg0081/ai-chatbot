@@ -26,6 +26,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
+      // IMPORTANT: Pass the token to authenticate with Vercel Blob
+      token: process.env.BLOB_READ_WRITE_TOKEN,
       onBeforeGenerateToken: async (pathname: string) => {
         console.log('Generating token for pathname:', pathname);
         
@@ -47,6 +49,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           throw new Error('Invalid file type');
         }
 
+        // Return token configuration
         return {
           allowedContentTypes: [
             'application/pdf',
@@ -204,6 +207,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(jsonResponse);
   } catch (error) {
+    console.error('Blob upload error:', error);
     return NextResponse.json(
       { error: (error as Error).message },
       { status: 400 }

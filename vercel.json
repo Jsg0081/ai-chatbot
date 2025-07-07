@@ -5,6 +5,9 @@
         },
         "app/api/knowledge-store/blob-upload/route.ts": {
             "maxDuration": 60
+        },
+        "app/api/knowledge-store/server-upload/route.ts": {
+            "maxDuration": 60
         }
     }
 }

@@ -144,53 +144,94 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
       // Use the original filename or the custom name if provided
       const filename = name || selectedFile.name;
       
-      // Upload directly to Vercel Blob
-      const blob = await upload(filename, selectedFile, {
-        access: 'public',
-        handleUploadUrl: '/api/knowledge-store/blob-upload',
-      });
-
-      console.log('Blob upload response:', blob);
+      // Try client-side upload first
+      let uploadSuccessful = false;
+      let blob: any = null;
       
-      // Verify the blob was uploaded successfully
-      if (!blob || !blob.url) {
-        throw new Error('Upload failed - no URL returned');
-      }
-
-      // On localhost, we need to manually process the file
-      // since the onUploadCompleted callback doesn't work without ngrok
-      const isLocalhost = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || 
-         window.location.hostname === '127.0.0.1' ||
-         window.location.hostname.startsWith('192.168.') ||
-         window.location.hostname.startsWith('10.'));
-         
-      if (isLocalhost) {
-        console.log('Processing upload on localhost...');
-        
-        const processResponse = await fetch('/api/knowledge-store/process-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            blobUrl: blob.url,
-            filename: filename,
-            contentType: selectedFile.type,
-            fileSize: selectedFile.size,
-            pathname: blob.pathname,
-          }),
+      try {
+        // Upload directly to Vercel Blob
+        blob = await upload(filename, selectedFile, {
+          access: 'public',
+          handleUploadUrl: '/api/knowledge-store/blob-upload',
         });
 
-        if (!processResponse.ok) {
-          const error = await processResponse.json();
-          throw new Error(error.error || 'Failed to process upload');
+        console.log('Blob upload response:', blob);
+        
+        // Verify the blob was uploaded successfully
+        if (!blob || !blob.url) {
+          throw new Error('Upload failed - no URL returned');
+        }
+        
+        uploadSuccessful = true;
+      } catch (clientError) {
+        console.error('Client-side upload failed:', clientError);
+        
+        // If client-side upload fails (403 error), try server-side upload
+        if (clientError instanceof Error && clientError.message.includes('403')) {
+          console.log('Falling back to server-side upload...');
+          
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          if (name) {
+            formData.append('name', name);
+          }
+          
+          const serverResponse = await fetch('/api/knowledge-store/server-upload', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!serverResponse.ok) {
+            const error = await serverResponse.json();
+            throw new Error(error.error || 'Server-side upload failed');
+          }
+          
+          const result = await serverResponse.json();
+          if (result.success) {
+            uploadSuccessful = true;
+            blob = { url: result.blobUrl, pathname: result.item.fileData.blobPathname };
+          }
+        } else {
+          throw clientError;
         }
       }
 
-      toast.success('File uploaded successfully');
-      setSelectedFile(null);
-      setName('');
-      onSuccess();
-      onOpenChange(false);
+      if (uploadSuccessful) {
+        // On localhost with client-side upload, we need to manually process the file
+        // since the onUploadCompleted callback doesn't work without ngrok
+        const isLocalhost = typeof window !== 'undefined' && 
+          (window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' ||
+           window.location.hostname.startsWith('192.168.') ||
+           window.location.hostname.startsWith('10.'));
+           
+        if (isLocalhost && blob && blob.url && !blob.url.includes('server-upload')) {
+          console.log('Processing upload on localhost...');
+          
+          const processResponse = await fetch('/api/knowledge-store/process-upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              blobUrl: blob.url, 
+              filename: filename,
+              contentType: selectedFile.type,
+              fileSize: selectedFile.size,
+              pathname: blob.pathname,
+            }),
+          });
+
+          if (!processResponse.ok) {
+            const error = await processResponse.json();
+            throw new Error(error.error || 'Failed to process upload');
+          }
+        }
+
+        toast.success('File uploaded successfully');
+        setSelectedFile(null);
+        setName('');
+        onSuccess();
+        onOpenChange(false);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to upload file');
     } finally {
