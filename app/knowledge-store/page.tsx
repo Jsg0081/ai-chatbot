@@ -269,9 +269,60 @@ export default function KnowledgeStorePage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View</DropdownMenuItem>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Download</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (item.type === 'file' && item.url) {
+                                // Get public URL for file
+                                try {
+                                  const response = await fetch(`/api/knowledge-store/${item.id}/public-url`);
+                                  if (response.ok) {
+                                    const { url } = await response.json();
+                                    window.open(url, '_blank');
+                                  } else {
+                                    window.open(item.url, '_blank');
+                                  }
+                                } catch {
+                                  window.open(item.url, '_blank');
+                                }
+                              } else if (item.type === 'url' && item.url) {
+                                window.open(item.url, '_blank');
+                              } else {
+                                toast.info('Text content can only be viewed in chat');
+                              }
+                            }}
+                          >
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => toast.info('Edit functionality coming soon')}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (item.type === 'file' && item.url) {
+                                try {
+                                  const response = await fetch(`/api/knowledge-store/${item.id}/public-url`);
+                                  if (response.ok) {
+                                    const { url } = await response.json();
+                                    // Create a download link
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = item.name;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                  }
+                                } catch {
+                                  toast.error('Failed to download file');
+                                }
+                              } else {
+                                toast.info('Only files can be downloaded');
+                              }
+                            }}
+                          >
+                            Download
+                          </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-destructive"
                             onClick={() => handleDelete(item.id)}

@@ -4,6 +4,12 @@
 
 ### 1. Enable Vercel Blob in Your Project
 
+**If you already have Vercel Blob set up:**
+- You'll see an error about `BLOB_READ_WRITE_TOKEN` already existing
+- This is perfect! Just click **Cancel** and proceed to step 2
+- Your existing Blob store will work with the Knowledge Store uploads
+
+**If you don't have Vercel Blob yet:**
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
 2. Select your project
 3. Navigate to the **Storage** tab

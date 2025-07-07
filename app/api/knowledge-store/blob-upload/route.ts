@@ -10,10 +10,19 @@ export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
 
   try {
+    console.log('Blob upload request received');
+    
+    // Ensure we have the blob token
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      throw new Error('BLOB_READ_WRITE_TOKEN not configured');
+    }
+    
     const jsonResponse = await handleUpload({
       body,
       request,
       onBeforeGenerateToken: async (pathname: string) => {
+        console.log('Generating token for pathname:', pathname);
+        
         // Authenticate user before generating upload token
         const session = await auth();
         
@@ -46,18 +55,37 @@ export async function POST(request: Request): Promise<NextResponse> {
           tokenPayload: JSON.stringify({
             userId: session.user.id,
           }),
+          // Add random suffix to avoid collisions
+          addRandomSuffix: true,
+          // Ensure files are publicly accessible
+          access: 'public',
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         // This runs after the file is uploaded to Vercel Blob
         // Note: This won't work on localhost without ngrok
         console.log('Upload completed:', blob.pathname);
+        console.log('Full blob object:', JSON.stringify(blob, null, 2));
         
         try {
           const { userId } = JSON.parse(tokenPayload || '{}');
           
-          // Fetch the file content from Vercel Blob
-          const response = await fetch(blob.url);
+          // For server-side access, we need to add the token to the URL
+          const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+          
+          // First try to use the blob URL as is (it might work if properly configured)
+          let response = await fetch(blob.url);
+          
+          // If that fails, try with token
+          if (!response.ok) {
+            const authenticatedUrl = `${blob.url}?token=${blobToken}`;
+            response = await fetch(authenticatedUrl);
+          }
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch blob content: ${response.status} ${response.statusText}`);
+          }
+          
           const arrayBuffer = await response.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
           
@@ -117,6 +145,30 @@ export async function POST(request: Request): Promise<NextResponse> {
           const filename = blob.pathname.split('/').pop() || 'Unknown file';
           
           // Store in database
+          // When uploading with access: 'public', Vercel Blob should provide a public URL
+          // The URL pattern for public blobs is: https://{storeId}.public.blob.vercel-storage.com/{pathname}
+          let publicUrl = blob.url;
+          
+          // Check if we have a downloadUrl (some versions of the SDK provide this)
+          if ((blob as any).downloadUrl) {
+            publicUrl = (blob as any).downloadUrl;
+          } 
+          // If the URL doesn't contain 'public', try to construct the public URL
+          else if (blob.url && !blob.url.includes('.public.blob.vercel-storage.com')) {
+            // Extract store ID from the URL
+            const urlMatch = blob.url.match(/https:\/\/([^.]+)\.blob\.vercel-storage\.com/);
+            if (urlMatch && urlMatch[1]) {
+              publicUrl = `https://${urlMatch[1]}.public.blob.vercel-storage.com/${blob.pathname}`;
+            }
+          }
+          
+          console.log('Blob URL resolution:', {
+            originalUrl: blob.url,
+            downloadUrl: (blob as any).downloadUrl,
+            pathname: blob.pathname,
+            resolvedPublicUrl: publicUrl,
+          });
+          
           await db
             .insert(knowledgeStore)
             .values({
@@ -124,12 +176,13 @@ export async function POST(request: Request): Promise<NextResponse> {
               name: filename,
               type: 'file',
               content: extractedContent,
-              url: blob.url,
+              url: publicUrl,
               fileData: {
                 originalName: filename,
                 mimeType: contentType,
                 uploadedAt: new Date().toISOString(),
-                blobUrl: blob.url,
+                blobUrl: publicUrl,
+                blobPathname: blob.pathname,
               },
               size: sizeString,
             });

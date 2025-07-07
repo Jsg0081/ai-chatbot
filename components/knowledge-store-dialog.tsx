@@ -150,6 +150,13 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
         handleUploadUrl: '/api/knowledge-store/blob-upload',
       });
 
+      console.log('Blob upload response:', blob);
+      
+      // Verify the blob was uploaded successfully
+      if (!blob || !blob.url) {
+        throw new Error('Upload failed - no URL returned');
+      }
+
       toast.success('File uploaded successfully');
       setSelectedFile(null);
       setName('');

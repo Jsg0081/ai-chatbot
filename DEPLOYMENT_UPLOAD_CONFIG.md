@@ -6,6 +6,12 @@ This guide ensures your Vercel deployment can handle file uploads beyond the 4.5
 
 ### 1. Enable Vercel Blob Storage
 
+**Note: If you already have Vercel Blob enabled:**
+- You'll see an error about `BLOB_READ_WRITE_TOKEN` already existing
+- This is expected! Your existing Blob store will work perfectly
+- Simply cancel the setup and continue with deployment
+
+**For new Blob setup:**
 1. Go to your Vercel project dashboard
 2. Navigate to the "Storage" tab
 3. Click "Create Database" and select "Blob"
