@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpenIcon, StickyNote, X } from 'lucide-react';
+import { BookOpenIcon, StickyNote, X, Pencil } from 'lucide-react';
 import { useVerse } from '@/lib/verse-context';
 import { BIBLE_BOOKS_DATA } from './bible-books';
 import { SpotifySearchModal } from './spotify-search-modal';
@@ -14,6 +14,12 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { OnboardingTooltip } from './onboarding-tooltip';
 import { useSession } from 'next-auth/react';
@@ -490,11 +496,11 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                 ))}
               </ul>
             </div>
-                  </div>
-      </div>
-    </Card>
-  );
-}
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   // Group verses into paragraphs
   // For Psalms and other poetry, use smaller groupings
@@ -509,7 +515,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
   }
 
   return (
-    <>
+    <TooltipProvider>
       <Card className="h-full flex flex-col shadow-lg relative overflow-hidden">
         {/* Onboarding tooltip for guest users */}
         <OnboardingTooltip 
@@ -633,7 +639,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
           
           <div className="max-w-3xl mx-auto">
             {paragraphs.map((paragraph, index) => (
-              <p 
+              <div 
                 key={index} 
                 className={`mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base ${
                   isPoetry ? 'pl-4 border-l-2 border-muted' : ''
@@ -642,53 +648,121 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                 {paragraph.map((verse, verseIndex) => {
                   const isSelected = isVerseSelected(book, chapter, verse.verse);
                   const hasNote = !!verseNotes[verse.verse.toString()];
+                  const noteContent = verseNotes[verse.verse.toString()]?.content || '';
                   return (
                     <React.Fragment key={verse.verse}>
                       {/* Use ContextMenu for desktop, touch handlers for mobile */}
                       {!isMobile ? (
                         <ContextMenu>
                           <ContextMenuTrigger asChild>
-                            <span 
-                              className={`
-                                group cursor-pointer rounded px-1 -mx-1 transition-all
-                                select-none relative inline
-                                ${isSelected && isDragging ? 'opacity-50' : ''}
-                                ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#00e599]/10 dark:text-[#00e599]' : ''}
-                              `}
-                              onClick={(e) => {
-                                // Only handle click if not right-clicking
-                                if (e.button === 0) {
-                                  handleVerseClick(verse);
-                                }
-                              }}
-                              onMouseDown={(e) => {
-                                // Reset any stuck state on mouse down
-                                e.currentTarget.style.pointerEvents = '';
-                              }}
-                              draggable={isSelected}
-                              onDragStart={handleDragStart}
-                              onDragEnd={handleDragEnd}
-                              title={isSelected ? 'Drag to notes editor' : 'Click to select'}
-                            >
-                              <sup className={`
-                                text-[10px] sm:text-xs mr-1 font-bold transition-colors
-                                ${isSelected 
-                                  ? 'text-cyan-950 dark:text-[#00e599]' 
-                                  : 'text-primary group-hover:text-primary/80'
-                                }
-                              `}>
-                                {verse.verse}
-                              </sup>
-                              <span className={`
-                                transition-colors text-sm sm:text-base
-                                ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
-                              `}>
-                                {verse.text}
+                            {hasNote ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span 
+                                    className={`
+                                      group cursor-pointer rounded px-1 -mx-1 transition-all
+                                      select-none relative inline
+                                      ${isSelected && isDragging ? 'opacity-50' : ''}
+                                      ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#00e599]/10 dark:text-[#00e599]' : ''}
+                                    `}
+                                    onClick={(e) => {
+                                      // Only handle click if not right-clicking
+                                      if (e.button === 0) {
+                                        handleVerseClick(verse);
+                                      }
+                                    }}
+                                    onMouseDown={(e) => {
+                                      // Reset any stuck state on mouse down
+                                      e.currentTarget.style.pointerEvents = '';
+                                    }}
+                                    draggable={isSelected}
+                                    onDragStart={handleDragStart}
+                                    onDragEnd={handleDragEnd}
+                                    title={isSelected ? 'Drag to notes editor' : 'Click to select'}
+                                  >
+                                    <sup className={`
+                                      text-[10px] sm:text-xs mr-1 font-bold transition-colors
+                                      ${isSelected 
+                                        ? 'text-cyan-950 dark:text-[#00e599]' 
+                                        : 'text-primary group-hover:text-primary/80'
+                                      }
+                                    `}>
+                                      {verse.verse}
+                                    </sup>
+                                    <span className={`
+                                      transition-colors text-sm sm:text-base
+                                      ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
+                                    `}>
+                                      {verse.text}
+                                    </span>
+                                    <StickyNote className="inline-block w-3 h-3 ml-1 text-cyan-950 dark:text-[#00e599]" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent 
+                                  className="max-w-xs bg-popover/95 backdrop-blur-sm border-2"
+                                  side="top"
+                                  sideOffset={5}
+                                >
+                                  <div className="space-y-2">
+                                    <div className="font-semibold text-sm">
+                                      {book} {chapter}:{verse.verse}
+                                    </div>
+                                    <div className="text-sm whitespace-pre-wrap">
+                                      {noteContent}
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddNoteClick(verse);
+                                      }}
+                                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                      Edit note
+                                    </button>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span 
+                                className={`
+                                  group cursor-pointer rounded px-1 -mx-1 transition-all
+                                  select-none relative inline
+                                  ${isSelected && isDragging ? 'opacity-50' : ''}
+                                  ${isSelected ? 'cursor-grab active:cursor-grabbing bg-cyan-300/40 text-cyan-950 dark:bg-[#00e599]/10 dark:text-[#00e599]' : ''}
+                                `}
+                                onClick={(e) => {
+                                  // Only handle click if not right-clicking
+                                  if (e.button === 0) {
+                                    handleVerseClick(verse);
+                                  }
+                                }}
+                                onMouseDown={(e) => {
+                                  // Reset any stuck state on mouse down
+                                  e.currentTarget.style.pointerEvents = '';
+                                }}
+                                draggable={isSelected}
+                                onDragStart={handleDragStart}
+                                onDragEnd={handleDragEnd}
+                                title={isSelected ? 'Drag to notes editor' : 'Click to select'}
+                              >
+                                <sup className={`
+                                  text-[10px] sm:text-xs mr-1 font-bold transition-colors
+                                  ${isSelected 
+                                    ? 'text-cyan-950 dark:text-[#00e599]' 
+                                    : 'text-primary group-hover:text-primary/80'
+                                  }
+                                `}>
+                                  {verse.verse}
+                                </sup>
+                                <span className={`
+                                  transition-colors text-sm sm:text-base
+                                  ${!isSelected && 'text-foreground/90 group-hover:text-foreground hover:bg-primary/10'}
+                                `}>
+                                  {verse.text}
+                                </span>
                               </span>
-                              {hasNote && (
-                                <StickyNote className="inline-block w-3 h-3 ml-1 text-cyan-950 dark:text-[#00e599]" />
-                              )}
-                            </span>
+                            )}
                           </ContextMenuTrigger>
                           <ContextMenuContent 
                             className="w-48 z-[100]"
@@ -788,7 +862,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                     </React.Fragment>
                   );
                 })}
-              </p>
+              </div>
             ))}
           </div>
         </div>
@@ -911,6 +985,6 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
           </div>
         </>
       )}
-    </>
+    </TooltipProvider>
   );
 } 

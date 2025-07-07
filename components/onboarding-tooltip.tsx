@@ -43,7 +43,7 @@ export function OnboardingTooltip({ isVisible, onClose }: OnboardingTooltipProps
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-start gap-2">
                   <MessageSquare className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                  <p>Click on any verse to select it, then chat directly with that verse</p>
+                  <p>Click on any verse to select it, then chat directly with that verse. Right-click to add notes to the verse.</p>
                 </div>
                 
                 <div className="flex items-start gap-2">
