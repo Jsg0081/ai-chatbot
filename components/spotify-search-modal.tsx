@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, Headphones, BookOpen, Search, Music, AlertTriangle } from 'lucide-react';
+import { ExternalLink, Headphones, BookOpen, Search, AlertTriangle, Clock } from 'lucide-react';
 import { X as CloseIcon } from 'lucide-react';
 import Image from 'next/image';
-import type { SpotifyShow, SpotifyAudiobook } from '@/lib/spotify';
+import type { SpotifyEpisode, SpotifyAudiobook } from '@/lib/spotify';
+import { SpotifyIcon } from '@/components/icons';
 import * as React from 'react';
 
 interface SpotifySearchModalProps {
@@ -32,12 +33,12 @@ export function SpotifySearchModal({
   verses,
   query: initialQuery 
 }: SpotifySearchModalProps) {
-  const [podcasts, setPodcasts] = useState<SpotifyShow[]>([]);
+  const [episodes, setEpisodes] = useState<SpotifyEpisode[]>([]);
   const [audiobooks, setAudiobooks] = useState<SpotifyAudiobook[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState(initialQuery || '');
-  const [activeTab, setActiveTab] = useState<'podcasts' | 'audiobooks'>('podcasts');
+  const [activeTab, setActiveTab] = useState<'episodes' | 'audiobooks'>('episodes');
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const hasValidData = useCallback(() => {
@@ -53,11 +54,11 @@ export function SpotifySearchModal({
     } 
     // When the modal closes, reset everything
     else if (!open) {
-      setPodcasts([]);
+      setEpisodes([]);
       setAudiobooks([]);
       setError(null);
       setLoading(false);
-      setActiveTab('podcasts');
+      setActiveTab('episodes');
     }
   }, [open, verses, query]); // Re-run when open state or data changes
 
@@ -81,10 +82,10 @@ export function SpotifySearchModal({
       }
 
       const data = await response.json();
-      setPodcasts(data.shows?.items || []);
+      setEpisodes(data.episodes?.items || []);
       setAudiobooks(data.audiobooks?.items || []);
       
-      if ((!data.shows?.items || data.shows.items.length === 0) && 
+      if ((!data.episodes?.items || data.episodes.items.length === 0) && 
           data.audiobooks?.items && data.audiobooks.items.length > 0) {
         setActiveTab('audiobooks');
       }
@@ -118,7 +119,7 @@ export function SpotifySearchModal({
       >
         <DialogHeader className="px-6 pt-6 pb-4 border-b relative">
           <DialogTitle className="text-2xl flex items-center gap-2">
-            <Music className="h-6 w-6 text-green-500" />
+            <SpotifyIcon size={24} />
             Spotify Content
             <Button
               ref={closeButtonRef}
@@ -130,17 +131,17 @@ export function SpotifySearchModal({
             </Button>
           </DialogTitle>
           <DialogDescription className="mt-2">
-            Podcasts and audiobooks related to <span className="font-semibold">{getSearchTitle()}</span>
+            Podcast episodes and audiobooks related to <span className="font-semibold">{getSearchTitle()}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as 'podcasts' | 'audiobooks')} className="h-full">
+          <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as 'episodes' | 'audiobooks')} className="h-full">
             <div className="px-6 pt-4">
               <TabsList className="grid w-full max-w-[400px] grid-cols-2">
-                <TabsTrigger value="podcasts" className="flex items-center gap-2">
+                <TabsTrigger value="episodes" className="flex items-center gap-2">
                   <Headphones className="h-4 w-4" />
-                  Podcasts ({podcasts.length})
+                  Episodes ({episodes.length})
                 </TabsTrigger>
                 <TabsTrigger value="audiobooks" className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
@@ -151,15 +152,15 @@ export function SpotifySearchModal({
 
             <ScrollArea className="h-[calc(85vh-200px)]">
               <div className="px-6 pb-6">
-                <TabsContent value="podcasts" className="mt-4 space-y-4">
+                <TabsContent value="episodes" className="mt-4 space-y-4">
                   {loading ? (
                     <LoadingSkeleton />
                   ) : error ? (
                     <ErrorMessage error={error} />
-                  ) : podcasts.length === 0 ? (
-                    <EmptyState type="podcasts" />
+                  ) : episodes.length === 0 ? (
+                    <EmptyState type="episodes" />
                   ) : (
-                    podcasts.map((show) => <ShowCard key={show.id} show={show} />)
+                    episodes.map((episode) => <EpisodeCard key={episode.id} episode={episode} />)
                   )}
                 </TabsContent>
 
@@ -183,15 +184,37 @@ export function SpotifySearchModal({
   );
 }
 
-function ShowCard({ show }: { show: SpotifyShow }) {
-  const imageUrl = show.images[0]?.url || '/placeholder-podcast.png';
+function EpisodeCard({ episode }: { episode: SpotifyEpisode }) {
+  const imageUrl = episode.images[0]?.url || '/placeholder-podcast.png';
+  
+  // Format duration from milliseconds to minutes/hours
+  const formatDuration = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${remainingMinutes}m`;
+    }
+    return `${minutes} min`;
+  };
+  
+  // Format release date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
   
   return (
     <div className="flex gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
       <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md">
         <Image
           src={imageUrl}
-          alt={show.name}
+          alt={episode.name}
           fill
           className="object-cover"
           sizes="96px"
@@ -199,18 +222,24 @@ function ShowCard({ show }: { show: SpotifyShow }) {
       </div>
       
       <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-lg line-clamp-1">{show.name}</h3>
-        <p className="text-sm text-muted-foreground mb-2">{show.publisher}</p>
-        <p className="text-sm line-clamp-2 mb-3">{show.description}</p>
+        <h3 className="font-semibold text-lg line-clamp-1">{episode.name}</h3>
+        <p className="text-sm text-muted-foreground mb-1">
+          {episode.show?.name ? `${episode.show.name}${episode.show.publisher ? ` • ${episode.show.publisher}` : ''}` : 'Unknown Podcast'}
+        </p>
+        <p className="text-sm line-clamp-2 mb-3">{episode.description}</p>
         
         <div className="flex items-center gap-4">
-          <Badge variant="secondary" className="text-xs">
-            {show.total_episodes} episodes
+          <Badge variant="secondary" className="text-xs flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {formatDuration(episode.duration_ms)}
           </Badge>
+          <span className="text-xs text-muted-foreground">
+            {formatDate(episode.release_date)}
+          </span>
           <Button
             size="sm"
             className="h-7 gap-1"
-            onClick={() => window.open(show.external_urls.spotify, '_blank')}
+            onClick={() => window.open(episode.external_urls.spotify, '_blank')}
           >
             <ExternalLink className="h-3 w-3" />
             Listen on Spotify
@@ -294,7 +323,7 @@ function ErrorMessage({ error }: { error: string }) {
   );
 }
 
-function EmptyState({ type }: { type: 'podcasts' | 'audiobooks' }) {
+function EmptyState({ type }: { type: 'episodes' | 'audiobooks' }) {
   return (
     <div className="text-center py-12">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
@@ -302,7 +331,7 @@ function EmptyState({ type }: { type: 'podcasts' | 'audiobooks' }) {
       </div>
       <h3 className="font-semibold text-lg mb-2">No {type} found</h3>
       <p className="text-muted-foreground max-w-md mx-auto">
-        We couldn&apos;t find any {type} related to this Bible verse. Try searching for a different verse or topic.
+        We couldn&apos;t find any {type === 'episodes' ? 'podcast episodes' : type} related to this Bible verse. Try searching for a different verse or topic.
       </p>
     </div>
   );

@@ -24,13 +24,14 @@ import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, X, Music } from 'lucide-react';
+import { ArrowDown, X, AudioLines, Paperclip, Send, StopCircle, FileText } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import { useVerse } from '@/lib/verse-context';
 import { SpotifySearchModal } from './spotify-search-modal';
 import { ModelSelector } from './model-selector';
 import type { Session } from 'next-auth';
+import { SpotifyIcon } from '@/components/icons';
 
 function PureMultimodalInput({
   chatId,
@@ -347,7 +348,7 @@ function PureMultimodalInput({
               onClick={() => setShowSpotifyModal(true)}
               title="Search Spotify for related content"
             >
-              <Music className="h-4 w-4" />
+              <SpotifyIcon size={16} />
             </Button>
             <Button
               size="sm"

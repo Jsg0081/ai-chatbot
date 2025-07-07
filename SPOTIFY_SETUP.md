@@ -1,6 +1,6 @@
 # Spotify Integration Setup Guide
 
-This guide will help you set up the Spotify integration for searching Bible-related podcasts and audiobooks.
+This guide will help you set up the Spotify integration for searching Bible-related podcast episodes and audiobooks.
 
 ## Prerequisites
 
@@ -46,16 +46,18 @@ SPOTIFY_CLIENT_SECRET=your_client_secret_here
 
 ## Features
 
+- **Episode-based Search**: Searches for specific podcast episodes rather than entire shows for more relevant results
 - **Verse-based Search**: Automatically searches for content related to selected Bible verses
 - **Smart Filtering**: Filters results to show only Bible-related content
 - **Multiple Search Strategies**: Uses different query approaches to find the best results
-- **Podcast & Audiobook Support**: Searches both content types
+- **Podcast Episodes & Audiobook Support**: Searches both content types
 
 ## Troubleshooting
 
 ### No results found
 - The integration uses multiple search strategies, but some verses may not have related content
 - Try selecting different verses or chapters
+- The search now looks for specific episodes which provides more targeted results
 
 ### Authentication errors
 - Double-check your Client ID and Client Secret

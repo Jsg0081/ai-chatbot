@@ -144,7 +144,7 @@ export function VerseNoteDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
-              {existingNote ? 'Edit Note' : 'Add Note'} for {verseReference}
+              {existingNote ? 'View Note' : 'Add Note'} for {verseReference}
             </DialogTitle>
             <DialogDescription className="text-sm italic mt-2">
               &ldquo;{verse.text}&rdquo;

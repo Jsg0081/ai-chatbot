@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchBibleVerse, searchSpotifyContent, type SpotifyShow, type SpotifyAudiobook } from '@/lib/spotify';
+import { searchBibleVerse, searchSpotifyContent, type SpotifyEpisode, type SpotifyAudiobook } from '@/lib/spotify';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,14 +23,14 @@ export async function POST(request: NextRequest) {
       );
       
       // Merge results and remove duplicates
-      const mergedShows = new Map();
+      const mergedEpisodes = new Map();
       const mergedAudiobooks = new Map();
       
       allResults.forEach(result => {
-        if (result.shows?.items) {
-          result.shows.items.forEach((show: SpotifyShow) => {
-            if (!mergedShows.has(show.id)) {
-              mergedShows.set(show.id, show);
+        if (result.episodes?.items) {
+          result.episodes.items.forEach((episode: SpotifyEpisode) => {
+            if (!mergedEpisodes.has(episode.id)) {
+              mergedEpisodes.set(episode.id, episode);
             }
           });
         }
@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
       });
       
       results = {
-        shows: {
-          items: Array.from(mergedShows.values()).slice(0, 20),
-          total: mergedShows.size,
+        episodes: {
+          items: Array.from(mergedEpisodes.values()).slice(0, 20),
+          total: mergedEpisodes.size,
         },
         audiobooks: {
           items: Array.from(mergedAudiobooks.values()).slice(0, 20),

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpenIcon, Music, StickyNote, X } from 'lucide-react';
+import { BookOpenIcon, StickyNote, X } from 'lucide-react';
 import { useVerse } from '@/lib/verse-context';
 import { BIBLE_BOOKS_DATA } from './bible-books';
 import { SpotifySearchModal } from './spotify-search-modal';
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { OnboardingTooltip } from './onboarding-tooltip';
 import { useSession } from 'next-auth/react';
 import { VerseNoteDialog } from './verse-note-dialog';
+import { SpotifyIcon } from '@/components/icons';
 
 interface ScriptureDisplayProps {
   book: string;
@@ -726,7 +727,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                               className="gap-2 text-sm cursor-pointer"
                             >
                               <StickyNote className="h-4 w-4 text-cyan-950 dark:text-[#00e599]" />
-                              {hasNote ? 'Edit Note' : 'Add Note'}
+                              {hasNote ? 'View Note' : 'Add Note'}
                             </ContextMenuItem>
                             <ContextMenuItem 
                               onClick={() => {
@@ -741,7 +742,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                               }}
                               className="gap-2 text-sm cursor-pointer"
                             >
-                              <Music className="h-4 w-4" />
+                              <SpotifyIcon size={16} />
                               Search on Spotify
                             </ContextMenuItem>
                           </ContextMenuContent>
@@ -894,7 +895,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
               }}
             >
               <StickyNote className="h-4 w-4 text-cyan-950 dark:text-[#00e599]" />
-              {verseNotes[mobileMenuVerse.verse.toString()] ? 'Edit Note' : 'Add Note'}
+              {verseNotes[mobileMenuVerse.verse.toString()] ? 'View Note' : 'Add Note'}
             </button>
             <button
               className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded flex items-center gap-2"
@@ -904,7 +905,7 @@ export function ScriptureDisplay({ book, chapter }: ScriptureDisplayProps) {
                 closeMobileMenu();
               }}
             >
-              <Music className="h-4 w-4" />
+              <SpotifyIcon size={16} />
               Search on Spotify
             </button>
           </div>

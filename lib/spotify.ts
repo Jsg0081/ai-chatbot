@@ -2,13 +2,30 @@
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 
 export interface SpotifySearchResult {
-  shows?: {
-    items: SpotifyShow[];
+  episodes?: {
+    items: SpotifyEpisode[];
     total: number;
   };
   audiobooks?: {
     items: SpotifyAudiobook[];
     total: number;
+  };
+}
+
+export interface SpotifyEpisode {
+  id: string;
+  name: string;
+  description: string;
+  images: SpotifyImage[];
+  duration_ms: number;
+  release_date: string;
+  external_urls: {
+    spotify: string;
+  };
+  show: {
+    id: string;
+    name: string;
+    publisher: string;
   };
 }
 
@@ -99,15 +116,16 @@ async function getAccessToken(): Promise<string> {
 
 export async function searchSpotifyContent(
   query: string,
-  types: ('show' | 'audiobook')[] = ['show', 'audiobook']
+  types: ('episode' | 'audiobook')[] = ['episode', 'audiobook'],
+  enhanceQuery: boolean = true
 ): Promise<SpotifySearchResult> {
   const token = await getAccessToken();
   
-  // Enhance query with Bible-related terms for better results
-  const enhancedQuery = `${query} Bible Christian sermon devotional`;
+  // Only enhance query with generic terms if requested
+  const finalQuery = enhanceQuery ? `${query} Bible Christian sermon devotional` : query;
   
   const params = new URLSearchParams({
-    q: enhancedQuery,
+    q: finalQuery,
     type: types.join(','),
     market: 'US', // You might want to make this configurable
     limit: '20',
@@ -138,40 +156,55 @@ export async function searchBibleVerse(verse: {
   
   // Try different query strategies for better results
   const queries = [
-    verseReference,
-    `"${verseReference}"`,
-    `${verse.book} chapter ${verse.chapter}`,
+    // Most specific first - exact verse reference
+    { query: `"${verseReference}" Bible`, enhance: false },
+    { query: `${verseReference} sermon`, enhance: false },
+    { query: `${verse.book} ${verse.chapter} verse ${verse.verse}`, enhance: false },
+    // Then book and chapter
+    { query: `"${verse.book} ${verse.chapter}" Bible study`, enhance: false },
+    { query: `${verse.book} chapter ${verse.chapter} sermon`, enhance: false },
+    // Finally, if we have verse text, search by themes
+    ...(verse.text ? [{ query: `${verse.book} ${extractKeywords(verse.text).join(' ')}`, enhance: true }] : [])
   ];
 
-  // If we have the verse text, extract key themes (simple keyword extraction)
-  if (verse.text) {
-    const keywords = extractKeywords(verse.text);
-    if (keywords.length > 0) {
-      queries.push(`Bible ${keywords.join(' ')}`);
-    }
-  }
-
   // Try queries in order until we get results
-  for (const query of queries) {
+  for (const { query, enhance } of queries) {
     try {
-      const results = await searchSpotifyContent(query);
+      const results = await searchSpotifyContent(query, ['episode', 'audiobook'], enhance);
       
-      // Filter results to ensure they're actually Bible-related
-      if (results.shows?.items) {
-        results.shows.items = results.shows.items.filter(show => 
-          isBibleRelated(show.name, show.description)
-        );
+      // Filter results to ensure they're related to the specific verse/book
+      if (results.episodes?.items) {
+        results.episodes.items = results.episodes.items.filter(episode => {
+          const showName = episode.show?.name ?? '';
+          const combined = `${episode.name} ${episode.description} ${showName}`.toLowerCase();
+          
+          // Check if it's Bible-related AND mentions the specific book
+          return (
+            isBibleRelated(episode.name, episode.description) ||
+            isBibleRelated(showName, '')
+          ) && (
+            combined.includes(verse.book.toLowerCase()) ||
+            combined.includes(`${verse.chapter}:${verse.verse}`) ||
+            combined.includes(`chapter ${verse.chapter}`)
+          );
+        });
       }
       
       if (results.audiobooks?.items) {
-        results.audiobooks.items = results.audiobooks.items.filter(book => 
-          isBibleRelated(book.name, book.description)
-        );
+        results.audiobooks.items = results.audiobooks.items.filter(book => {
+          const combined = `${book.name} ${book.description}`.toLowerCase();
+          
+          return isBibleRelated(book.name, book.description) && (
+            combined.includes(verse.book.toLowerCase()) ||
+            combined.includes(`${verse.chapter}:${verse.verse}`) ||
+            combined.includes(`chapter ${verse.chapter}`)
+          );
+        });
       }
       
       // If we have results, return them
       if (
-        (results.shows?.items && results.shows.items.length > 0) ||
+        (results.episodes?.items && results.episodes.items.length > 0) ||
         (results.audiobooks?.items && results.audiobooks.items.length > 0)
       ) {
         return results;
@@ -181,8 +214,32 @@ export async function searchBibleVerse(verse: {
     }
   }
 
+  // If no specific results found, do one more broad search
+  try {
+    const broadResults = await searchSpotifyContent(`${verse.book} Bible`, ['episode', 'audiobook'], true);
+    
+    // Still filter by book name at minimum
+    if (broadResults.episodes?.items) {
+      broadResults.episodes.items = broadResults.episodes.items.filter(episode => {
+        const combined = `${episode.name} ${episode.description} ${episode.show?.name || ''}`.toLowerCase();
+        return combined.includes(verse.book.toLowerCase());
+      });
+    }
+    
+    if (broadResults.audiobooks?.items) {
+      broadResults.audiobooks.items = broadResults.audiobooks.items.filter(book => {
+        const combined = `${book.name} ${book.description}`.toLowerCase();
+        return combined.includes(verse.book.toLowerCase());
+      });
+    }
+    
+    return broadResults;
+  } catch (error) {
+    console.error('Broad search failed:', error);
+  }
+
   // Return empty results if nothing found
-  return { shows: { items: [], total: 0 }, audiobooks: { items: [], total: 0 } };
+  return { episodes: { items: [], total: 0 }, audiobooks: { items: [], total: 0 } };
 }
 
 function extractKeywords(text: string): string[] {
