@@ -105,15 +105,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       <SidebarContent>
         <BibleBooks onBookSelect={handleBookSelect} />
         <SidebarSeparator />
-        <SidebarHistory user={user} />
-        <SidebarSeparator />
         <SidebarNotesHistory />
         <SidebarSeparator />
         <SidebarVerseNotes />
         <SidebarSeparator />
         <SidebarGroup>
           <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
-            Knowledge Store
+            Knowledge Base
           </div>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -132,6 +130,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarSeparator />
+        <SidebarHistory user={user} />
       </SidebarContent>
       <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
     </Sidebar>

@@ -23,6 +23,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 import { KnowledgeStoreDialog } from '@/components/knowledge-store-dialog';
+import { AuthModal } from '@/components/auth-modal';
+import { guestRegex } from '@/lib/constants';
 
 interface KnowledgeItem {
   id: string;
@@ -43,11 +45,27 @@ export default function KnowledgeStorePage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'text' | 'file' | 'url'>('text');
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { data: session } = useSession();
+
+  const isGuest = guestRegex.test(session?.user?.email ?? '');
 
   useEffect(() => {
     fetchItems();
   }, []);
+
+  const checkAuthAndProceed = (callback: () => void) => {
+    if (isGuest) {
+      setShowAuthModal(true);
+      return;
+    }
+    callback();
+  };
+
+  const handleAuthSuccess = () => {
+    // Refresh the page to update session and reload items
+    window.location.reload();
+  };
 
   const fetchItems = async () => {
     try {
@@ -145,6 +163,19 @@ export default function KnowledgeStorePage() {
       <div className="flex flex-col h-full bg-background">
         {/* Header */}
         <div className="border-b p-6">
+          {isGuest && (
+            <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground flex items-center justify-between">
+              <span>Sign in to save and manage your own knowledge base</span>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setShowAuthModal(true)}
+              >
+                Sign In
+              </Button>
+            </div>
+          )}
+          
           <div className="flex justify-between items-start mb-6">
             <h1 className="text-2xl font-semibold">Knowledge Base</h1>
             <div className="text-sm text-muted-foreground">
@@ -159,48 +190,34 @@ export default function KnowledgeStorePage() {
           <div className="flex gap-3 mb-6">
             <Button
               size="sm"
-              onClick={() => {
+              onClick={() => checkAuthAndProceed(() => {
                 setSelectedTab('text');
                 setDialogOpen(true);
-              }}
+              })}
             >
               <Text className="h-4 w-4 mr-2" />
               Add Text
             </Button>
             <Button
               size="sm"
-              onClick={() => {
+              onClick={() => checkAuthAndProceed(() => {
                 setSelectedTab('file');
                 setDialogOpen(true);
-              }}
+              })}
             >
               <FileText className="h-4 w-4 mr-2" />
               Upload File
             </Button>
             <Button
               size="sm"
-              onClick={() => {
+              onClick={() => checkAuthAndProceed(() => {
                 setSelectedTab('url');
                 setDialogOpen(true);
-              }}
+              })}
             >
               <Globe className="h-4 w-4 mr-2" />
               Add URL
             </Button>
-            {process.env.NODE_ENV === 'development' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  const response = await fetch('/api/knowledge-store/debug');
-                  const data = await response.json();
-                  console.log('Debug info:', data);
-                  toast.info(`Found ${data.userItems.count} items for current user`);
-                }}
-              >
-                Debug
-              </Button>
-            )}
           </div>
 
           {/* Search Bar */}
@@ -225,12 +242,24 @@ export default function KnowledgeStorePage() {
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-12">
               <Text className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-lg mb-2">No items found</h3>
+              <h3 className="font-semibold text-lg mb-2">
+                {isGuest ? 'Sign in to get started' : 'No items found'}
+              </h3>
               <p className="text-muted-foreground">
-                {searchQuery
-                  ? 'Try adjusting your search query'
-                  : 'Start by adding URLs, files, or text to your knowledge base'}
+                {isGuest 
+                  ? 'Create an account to build your personal knowledge base'
+                  : searchQuery
+                    ? 'Try adjusting your search query'
+                    : 'Start by adding URLs, files, or text to your knowledge base'}
               </p>
+              {isGuest && (
+                <Button 
+                  className="mt-4"
+                  onClick={() => setShowAuthModal(true)}
+                >
+                  Sign In
+                </Button>
+              )}
             </div>
           ) : (
             <table className="w-full">
@@ -286,7 +315,7 @@ export default function KnowledgeStorePage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={async () => {
+                            onClick={() => checkAuthAndProceed(async () => {
                               if (item.type === 'file' && item.url) {
                                 // Get public URL for file
                                 try {
@@ -305,17 +334,17 @@ export default function KnowledgeStorePage() {
                               } else {
                                 toast.info('Text content can only be viewed in chat');
                               }
-                            }}
+                            })}
                           >
                             View
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => toast.info('Edit functionality coming soon')}
+                            onClick={() => checkAuthAndProceed(() => toast.info('Edit functionality coming soon'))}
                           >
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={async () => {
+                            onClick={() => checkAuthAndProceed(async () => {
                               if (item.type === 'file' && item.url) {
                                 try {
                                   const response = await fetch(`/api/knowledge-store/${item.id}/public-url`);
@@ -335,13 +364,13 @@ export default function KnowledgeStorePage() {
                               } else {
                                 toast.info('Only files can be downloaded');
                               }
-                            }}
+                            })}
                           >
                             Download
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-destructive"
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => checkAuthAndProceed(() => handleDelete(item.id))}
                           >
                             Delete
                           </DropdownMenuItem>
@@ -361,6 +390,12 @@ export default function KnowledgeStorePage() {
         onOpenChange={setDialogOpen}
         onSuccess={fetchItems}
         defaultTab={selectedTab}
+      />
+
+      <AuthModal
+        open={showAuthModal}
+        onOpenChange={setShowAuthModal}
+        onSuccess={handleAuthSuccess}
       />
     </>
   );
