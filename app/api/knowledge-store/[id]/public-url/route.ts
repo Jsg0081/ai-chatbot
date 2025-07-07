@@ -6,8 +6,9 @@ import { eq, and } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -20,7 +21,7 @@ export async function GET(
       .from(knowledgeStore)
       .where(
         and(
-          eq(knowledgeStore.id, params.id),
+          eq(knowledgeStore.id, id),
           eq(knowledgeStore.userId, session.user.id)
         )
       )
@@ -59,7 +60,7 @@ export async function GET(
               blobUrl: publicUrl
             } : item.fileData
           })
-          .where(eq(knowledgeStore.id, params.id));
+          .where(eq(knowledgeStore.id, id));
         
         return NextResponse.json({ url: publicUrl });
       }
