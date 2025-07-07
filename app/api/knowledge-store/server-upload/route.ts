@@ -9,6 +9,8 @@ import mammoth from 'mammoth';
 export async function POST(request: NextRequest) {
   const session = await auth();
   
+  console.log('Server upload - session:', session?.user?.id);
+  
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -123,6 +125,15 @@ export async function POST(request: NextRequest) {
 
     // Use the public URL from blob response
     const publicUrl = blob.downloadUrl || blob.url;
+    
+    console.log('Saving to database with userId:', session.user.id);
+    console.log('File details:', {
+      name: filename,
+      type: 'file',
+      contentLength: extractedContent.length,
+      url: publicUrl,
+      size: sizeString,
+    });
 
     // Store in database
     const newItem = await db
@@ -143,6 +154,8 @@ export async function POST(request: NextRequest) {
         size: sizeString,
       })
       .returning();
+
+    console.log('Database insert successful:', newItem[0]);
 
     return NextResponse.json({
       success: true,

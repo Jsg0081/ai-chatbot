@@ -51,11 +51,13 @@ export default function KnowledgeStorePage() {
 
   const fetchItems = async () => {
     try {
+      console.log('Fetching knowledge store items...');
       const response = await fetch('/api/knowledge-store');
       if (!response.ok) {
         throw new Error('Failed to fetch items');
       }
       const data = await response.json();
+      console.log('Fetched items:', data);
       setItems(data);
     } catch (error) {
       console.error('Error fetching items:', error);
@@ -185,6 +187,20 @@ export default function KnowledgeStorePage() {
               <Globe className="h-4 w-4 mr-2" />
               Add URL
             </Button>
+            {process.env.NODE_ENV === 'development' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const response = await fetch('/api/knowledge-store/debug');
+                  const data = await response.json();
+                  console.log('Debug info:', data);
+                  toast.info(`Found ${data.userItems.count} items for current user`);
+                }}
+              >
+                Debug
+              </Button>
+            )}
           </div>
 
           {/* Search Bar */}

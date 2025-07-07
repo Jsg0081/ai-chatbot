@@ -7,6 +7,8 @@ import { eq, desc, and } from 'drizzle-orm';
 export async function GET(request: NextRequest) {
   const session = await auth();
   
+  console.log('GET /api/knowledge-store - session:', session?.user?.id);
+  
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -18,6 +20,8 @@ export async function GET(request: NextRequest) {
       .where(eq(knowledgeStore.userId, session.user.id))
       .orderBy(desc(knowledgeStore.updatedAt));
 
+    console.log(`Found ${items.length} items for user ${session.user.id}`);
+    
     return NextResponse.json(items);
   } catch (error) {
     console.error('Error fetching knowledge store items:', error);

@@ -149,6 +149,7 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
       let blob: any = null;
       
       try {
+        console.log('Attempting client-side upload...');
         // Upload directly to Vercel Blob
         blob = await upload(filename, selectedFile, {
           access: 'public',
@@ -163,11 +164,12 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
         }
         
         uploadSuccessful = true;
+        console.log('Client-side upload successful, blob URL:', blob.url);
       } catch (clientError) {
         console.error('Client-side upload failed:', clientError);
         
         // If client-side upload fails (403 error), try server-side upload
-        if (clientError instanceof Error && clientError.message.includes('403')) {
+        if (clientError instanceof Error && (clientError.message.includes('403') || clientError.message.includes('Failed to upload'))) {
           console.log('Falling back to server-side upload...');
           
           const formData = new FormData();
@@ -181,22 +183,36 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
             body: formData,
           });
           
+          const serverData = await serverResponse.json();
+          console.log('Server upload response:', serverData);
+          
           if (!serverResponse.ok) {
-            const error = await serverResponse.json();
-            throw new Error(error.error || 'Server-side upload failed');
+            throw new Error(serverData.error || 'Server-side upload failed');
           }
           
-          const result = await serverResponse.json();
-          if (result.success) {
+          if (serverData.success) {
             uploadSuccessful = true;
-            blob = { url: result.blobUrl, pathname: result.item.fileData.blobPathname };
+            blob = { url: serverData.blobUrl, pathname: serverData.item.fileData.blobPathname };
+            console.log('Server-side upload successful');
+            
+            // Server-side upload already saves to database, so we're done
+            toast.success('File uploaded successfully');
+            setSelectedFile(null);
+            setName('');
+            
+            // Delay closing to ensure state updates
+            setTimeout(() => {
+              onSuccess(); // This will trigger fetchItems()
+              onOpenChange(false);
+            }, 100);
+            return;
           }
         } else {
           throw clientError;
         }
       }
 
-      if (uploadSuccessful) {
+      if (uploadSuccessful && blob) {
         // On localhost with client-side upload, we need to manually process the file
         // since the onUploadCompleted callback doesn't work without ngrok
         const isLocalhost = typeof window !== 'undefined' && 
@@ -205,8 +221,10 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
            window.location.hostname.startsWith('192.168.') ||
            window.location.hostname.startsWith('10.'));
            
-        if (isLocalhost && blob && blob.url && !blob.url.includes('server-upload')) {
-          console.log('Processing upload on localhost...');
+        console.log('Is localhost:', isLocalhost, 'Blob URL:', blob.url);
+        
+        if (isLocalhost || true) { // Always process for now to ensure it works
+          console.log('Processing upload...');
           
           const processResponse = await fetch('/api/knowledge-store/process-upload', {
             method: 'POST',
@@ -220,19 +238,30 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
             }),
           });
 
+          const processData = await processResponse.json();
+          console.log('Process upload response:', processData);
+
           if (!processResponse.ok) {
-            const error = await processResponse.json();
-            throw new Error(error.error || 'Failed to process upload');
+            throw new Error(processData.error || 'Failed to process upload');
+          }
+          
+          if (!processData.success) {
+            throw new Error('Failed to save file to database');
           }
         }
 
         toast.success('File uploaded successfully');
         setSelectedFile(null);
         setName('');
-        onSuccess();
-        onOpenChange(false);
+        
+        // Delay closing to ensure state updates
+        setTimeout(() => {
+          onSuccess(); // This will trigger fetchItems()
+          onOpenChange(false);
+        }, 100);
       }
     } catch (error) {
+      console.error('Upload error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to upload file');
     } finally {
       setLoading(false);

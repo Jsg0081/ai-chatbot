@@ -136,7 +136,16 @@ async function processFile(buffer: Buffer, metadata: {
   }
   
   // Store in database
-  await db
+  console.log('Storing in database with userId:', metadata.userId);
+  console.log('File metadata:', {
+    name: metadata.filename,
+    type: 'file',
+    contentLength: extractedContent.length,
+    url: publicUrl,
+    size: sizeString,
+  });
+  
+  const result = await db
     .insert(knowledgeStore)
     .values({
       userId: metadata.userId,
@@ -152,10 +161,14 @@ async function processFile(buffer: Buffer, metadata: {
         blobPathname: metadata.pathname,
       },
       size: sizeString,
-    });
+    })
+    .returning();
+    
+  console.log('Database insert result:', result);
     
   return NextResponse.json({ 
     success: true,
-    message: 'File processed and stored successfully'
+    message: 'File processed and stored successfully',
+    item: result[0],
   });
 } 
