@@ -279,7 +279,7 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
                 disabled={loading}
               />
               <p className="text-sm text-muted-foreground">
-                We'll extract the content from this webpage for you.
+                We&apos;ll extract the content from this webpage for you.
               </p>
             </div>
 
