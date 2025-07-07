@@ -3,6 +3,9 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   experimental: {
     ppr: true,
+    serverActions: {
+      bodySizeLimit: '20mb',
+    },
   },
   serverExternalPackages: ['pdf-parse'],
   images: {

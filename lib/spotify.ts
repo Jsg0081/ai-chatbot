@@ -22,7 +22,7 @@ export interface SpotifyEpisode {
   external_urls: {
     spotify: string;
   };
-  show: {
+  show?: {
     id: string;
     name: string;
     publisher: string;

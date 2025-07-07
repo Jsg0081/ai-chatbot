@@ -96,8 +96,10 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error('File size must be less than 10MB');
+      const maxSize = 20 * 1024 * 1024; // 20MB limit
+      if (file.size > maxSize) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        toast.error(`File size (${sizeMB}MB) exceeds the 20MB limit. Please use a smaller file.`);
         return;
       }
       setSelectedFile(file);
@@ -120,8 +122,10 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
     
     const file = e.dataTransfer.files[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
+      const maxSize = 20 * 1024 * 1024; // 20MB limit
+      if (file.size > maxSize) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        toast.error(`File size (${sizeMB}MB) exceeds the 20MB limit. Please use a smaller file.`);
         return;
       }
       setSelectedFile(file);
@@ -377,7 +381,7 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
                 {selectedFile ? selectedFile.name : 'Drop a file here or click to browse'}
               </p>
               <p className="text-xs text-muted-foreground">
-                Supports PDF, DOCX, TXT, RTF, CSV, MD, HTML (Max 10MB)
+                Supports PDF, DOCX, TXT, RTF, CSV, MD, HTML (Max 20MB)
               </p>
               <input
                 id="file-upload"

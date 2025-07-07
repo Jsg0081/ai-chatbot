@@ -1,0 +1,7 @@
+{
+    "functions": {
+        "app/api/knowledge-store/upload/route.ts": {
+            "maxDuration": 60
+        }
+    }
+}

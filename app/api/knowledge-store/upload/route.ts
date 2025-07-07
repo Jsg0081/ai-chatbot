@@ -13,8 +13,8 @@ export const maxDuration = 60;
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
-    .refine((file) => file.size <= 10 * 1024 * 1024, {
-      message: 'File size should be less than 10MB',
+    .refine((file) => file.size <= 20 * 1024 * 1024, {
+      message: 'File size should be less than 20MB',
     })
     .refine((file) => [
       'application/pdf',
@@ -79,6 +79,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Check content length header to prevent parsing files that are too large
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 20 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'File size exceeds 20MB limit' },
+        { status: 413 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as Blob;
     const name = formData.get('name') as string;
