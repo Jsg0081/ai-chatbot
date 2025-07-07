@@ -157,6 +157,35 @@ export function KnowledgeStoreDialog({ open, onOpenChange, onSuccess, defaultTab
         throw new Error('Upload failed - no URL returned');
       }
 
+      // On localhost, we need to manually process the file
+      // since the onUploadCompleted callback doesn't work without ngrok
+      const isLocalhost = typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || 
+         window.location.hostname === '127.0.0.1' ||
+         window.location.hostname.startsWith('192.168.') ||
+         window.location.hostname.startsWith('10.'));
+         
+      if (isLocalhost) {
+        console.log('Processing upload on localhost...');
+        
+        const processResponse = await fetch('/api/knowledge-store/process-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blobUrl: blob.url,
+            filename: filename,
+            contentType: selectedFile.type,
+            fileSize: selectedFile.size,
+            pathname: blob.pathname,
+          }),
+        });
+
+        if (!processResponse.ok) {
+          const error = await processResponse.json();
+          throw new Error(error.error || 'Failed to process upload');
+        }
+      }
+
       toast.success('File uploaded successfully');
       setSelectedFile(null);
       setName('');
