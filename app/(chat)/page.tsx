@@ -13,14 +13,14 @@ import { ResizablePanels } from '@/components/resizable-panels';
 import { ScriptureContextUpdater } from '@/components/scripture-context-updater';
 
 interface PageProps {
-  searchParams: Promise<{ book?: string; chapter?: string }>;
+  searchParams: Promise<{ book?: string; chapter?: string; noteId?: string }>;
 }
 
 export default async function Page({ searchParams }: PageProps) {
   const session = await auth();
 
   const id = generateUUID();
-  const { book, chapter } = await searchParams;
+  const { book, chapter, noteId } = await searchParams;
 
   // Create initial message if a book was selected
   let initialMessages: UIMessage[] = [];
@@ -81,7 +81,7 @@ export default async function Page({ searchParams }: PageProps) {
       <div className="h-screen overflow-hidden">
         <ResizablePanels
           scriptureContent={<ScriptureDisplayWrapper />}
-          notesContent={<NotesWrapper chatId={id} />}
+          notesContent={<NotesWrapper chatId={id} initialNoteId={noteId} />}
           chatContent={chatComponent}
         />
       </div>

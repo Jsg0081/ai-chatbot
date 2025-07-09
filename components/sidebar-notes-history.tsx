@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -45,6 +46,7 @@ export function SidebarNotesHistory() {
   const lastFetchRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
   const { isMobile, setOpenMobile } = useSidebar();
+  const router = useRouter();
 
   // Load notes on mount and when session changes (but prevent duplicate fetches)
   useEffect(() => {
@@ -98,20 +100,27 @@ export function SidebarNotesHistory() {
   };
 
   const handleNoteSelect = (noteId: string) => {
-    // Call the window handler if available
+    setActiveNoteId(noteId);
+    
+    // Navigate to root with noteId parameter
+    router.push(`/?noteId=${noteId}`);
+    
+    // If already on the page, also trigger the direct handler
     if (typeof window !== 'undefined' && (window as any).handleNoteSelect) {
       (window as any).handleNoteSelect(noteId);
-      setActiveNoteId(noteId);
+    }
+    
+    // For mobile, close sidebar and dispatch the tab switch event
+    if (isMobile) {
+      setOpenMobile(false);
+      // Save to localStorage for persistence
+      const activeTabKey = 'bible-mobile-active-tab';
+      localStorage.setItem(activeTabKey, 'notes');
       
-      // On mobile, close sidebar and switch to notes tab
-      if (isMobile) {
-        setOpenMobile(false);
-        // Switch to notes tab
-        const activeTabKey = 'bible-mobile-active-tab';
-        localStorage.setItem(activeTabKey, 'notes');
-        // Dispatch custom event to notify ResizablePanels to switch tabs
+      // Dispatch event with a small delay to ensure navigation has started
+      setTimeout(() => {
         window.dispatchEvent(new CustomEvent('mobile-tab-switch', { detail: 'notes' }));
-      }
+      }, 100);
     }
   };
 

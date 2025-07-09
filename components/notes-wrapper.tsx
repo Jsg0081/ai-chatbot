@@ -1,14 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NotesEditor } from '@/components/notes-editor';
 
 interface NotesWrapperProps {
   chatId?: string;
+  initialNoteId?: string;
 }
 
-export function NotesWrapper({ chatId }: NotesWrapperProps) {
-  const [selectedNoteId, setSelectedNoteId] = useState<string | undefined>();
+export function NotesWrapper({ chatId, initialNoteId }: NotesWrapperProps) {
+  const [selectedNoteId, setSelectedNoteId] = useState<string | undefined>(initialNoteId);
+
+  // Update selectedNoteId when initialNoteId changes (e.g., from URL params)
+  useEffect(() => {
+    if (initialNoteId) {
+      setSelectedNoteId(initialNoteId);
+    }
+  }, [initialNoteId]);
 
   // This will be called from the sidebar through a context or prop drilling
   const handleNoteSelect = (noteId: string) => {
