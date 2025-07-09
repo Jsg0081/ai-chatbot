@@ -9,6 +9,12 @@ import {
 } from '@/components/ui/tooltip';
 import { BookOpenIcon } from 'lucide-react';
 import { useVerse } from '@/lib/verse-context';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface VerseData {
   reference: string;
@@ -73,7 +79,9 @@ function BibleVerseTooltip({ reference, children }: { reference: string; childre
   const [verseData, setVerseData] = useState<VerseData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const { isVerseSelected } = useVerse();
+  const isMobile = useIsMobile();
 
   // Parse reference to check if verse is selected
   const parseReference = (ref: string) => {
@@ -177,43 +185,78 @@ function BibleVerseTooltip({ reference, children }: { reference: string; childre
     }
   };
 
+  const handleClick = () => {
+    if (isMobile) {
+      setIsOpen(!isOpen);
+      if (!verseData && !loading && !error) {
+        fetchVerse();
+      }
+    }
+  };
+
+  const verseContent = (
+    <>
+      {loading && (
+        <div className="flex items-center gap-2 text-sm">
+          <div className="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full" />
+          Loading verse...
+        </div>
+      )}
+      {error && (
+        <div className="text-sm text-muted-foreground">
+          Unable to load verse
+        </div>
+      )}
+      {verseData && !loading && !error && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 font-semibold">
+            <BookOpenIcon className="h-4 w-4" />
+            {verseData.reference}
+          </div>
+          <p className="text-sm leading-relaxed">{verseData.text}</p>
+          <p className="text-xs text-muted-foreground">{verseData.translation}</p>
+        </div>
+      )}
+    </>
+  );
+
+  const triggerContent = (
+    <span
+      className={`
+        underline decoration-dotted cursor-pointer hover:decoration-solid transition-all inline-flex items-center gap-1
+        text-cyan-950 dark:text-[#00e599] bg-cyan-300/40 dark:bg-[#00e599]/10 px-1 mx-0.5 rounded
+        ${isMobile ? 'active:opacity-80' : ''}
+      `}
+      onClick={handleClick}
+      onMouseEnter={() => !isMobile && fetchVerse()}
+    >
+      {children}
+      <BookOpenIcon className="h-3 w-3 opacity-70" />
+    </span>
+  );
+
+  // Use Popover for mobile, Tooltip for desktop
+  if (isMobile) {
+    return (
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          {triggerContent}
+        </PopoverTrigger>
+        <PopoverContent className="max-w-md p-4" side="top">
+          {verseContent}
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span
-            className={`
-              underline decoration-dotted cursor-pointer hover:decoration-solid transition-all inline-flex items-center gap-1
-              text-cyan-950 dark:text-[#00e599] bg-cyan-300/40 dark:bg-[#00e599]/10 px-1 mx-0.5 rounded
-            `}
-            onMouseEnter={() => fetchVerse()}
-          >
-            {children}
-            <BookOpenIcon className="h-3 w-3 opacity-70" />
-          </span>
+          {triggerContent}
         </TooltipTrigger>
         <TooltipContent className="max-w-md p-4" side="top">
-          {loading && (
-            <div className="flex items-center gap-2 text-sm">
-              <div className="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full" />
-              Loading verse...
-            </div>
-          )}
-          {error && (
-            <div className="text-sm text-muted-foreground">
-              Unable to load verse
-            </div>
-          )}
-          {verseData && !loading && !error && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 font-semibold">
-                <BookOpenIcon className="h-4 w-4" />
-                {verseData.reference}
-              </div>
-              <p className="text-sm leading-relaxed">{verseData.text}</p>
-              <p className="text-xs text-muted-foreground">{verseData.translation}</p>
-            </div>
-          )}
+          {verseContent}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
