@@ -158,7 +158,7 @@ export async function POST(request: Request) {
       if (mentionedNames.length > 0) {
         knowledgeContext += `\n- Document names: ${mentionedNames.join(', ')}`;
       }
-      knowledgeContext += '\n\nUse the getKnowledge tool to retrieve these documents before answering.';
+      knowledgeContext += '\n\nIMPORTANT: Use the getKnowledge tool to retrieve these documents. When asking about specific content (like "Hebrews 6:1-6"), pass that as the query parameter to search within the document. The tool will return relevant excerpts from large documents.';
     }
 
     // Ensure the message includes experimental_attachments

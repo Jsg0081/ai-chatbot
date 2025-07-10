@@ -78,6 +78,15 @@ export const myProvider = isTestEnvironment
           });
         }
         
+        // Handle Grok-4 model
+        if (modelId === 'grok-4-0709') {
+          if (!process.env.XAI_API_KEY) {
+            throw new Error('XAI_API_KEY is not set in environment variables');
+          }
+          console.log(`Using Grok-4 model: ${modelId}`);
+          return xai('grok-4-0709');
+        }
+        
         // Default to xAI models
         switch (modelId) {
           case 'chat-model':

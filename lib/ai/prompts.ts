@@ -110,9 +110,14 @@ export function systemPrompt({
   fullPrompt += `\n\nKnowledge Store Instructions:
 - When the user mentions a document by name (with @ prefix) or references a Knowledge ID, use the getKnowledge tool to retrieve that document's content
 - If you see references like "[Knowledge: ID]" in the message, immediately use getKnowledge with those specific IDs
-- When asked about information that might be in the user's knowledge store, search for relevant documents
-- Always read the full content of retrieved documents before answering questions about them
-- If multiple documents are relevant, retrieve and synthesize information from all of them`;
+- The tool can handle large documents up to ~500,000 characters (most PDFs fit entirely)
+- When asked about specific content (like "What does it say about Hebrews 6:1-6?"), include that specific query when calling getKnowledge
+- The tool will search within documents and return all matching excerpts with context
+- For very large documents (>500k chars), you may need to search for specific sections
+- When providing the initial query, you can retrieve the full document by using just the document name
+- If initial searches don't find what you need, use comprehensiveSearch=true with multiple search terms
+- For comprehensive searches, provide additionalQueries with variations like: ["Heb 6:1", "Hebrews 6:1", "6:1-6", "impossible to renew", "fallen away"]
+- The comprehensive search will find ALL occurrences throughout the entire document and group related matches`;
   
   // Add artifacts prompt for non-reasoning models and non-Bible study contexts
   if (selectedChatModel !== 'chat-model-reasoning' && !hasBibleVerses) {

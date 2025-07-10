@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { knowledgeStore } from '@/lib/db/schema';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
+import { sanitizeForPostgres } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -81,29 +82,31 @@ async function processFile(buffer: Buffer, metadata: {
     switch (metadata.contentType) {
       case 'application/pdf':
         const pdfData = await pdf(buffer);
-        extractedContent = pdfData.text;
+        extractedContent = sanitizeForPostgres(pdfData.text);
         break;
 
       case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         const docxResult = await mammoth.extractRawText({ buffer });
-        extractedContent = docxResult.value;
+        extractedContent = sanitizeForPostgres(docxResult.value);
         break;
 
       case 'text/plain':
       case 'text/csv':
       case 'text/markdown':
       case 'text/html':
-        extractedContent = new TextDecoder().decode(buffer);
+        extractedContent = sanitizeForPostgres(new TextDecoder().decode(buffer));
         break;
 
       case 'text/rtf':
       case 'application/rtf':
         const rtfText = new TextDecoder().decode(buffer);
-        extractedContent = rtfText
-          .replace(/\\\\[a-z]+\b[0-9-]*/gi, '')
-          .replace(/[{}]/g, '')
-          .replace(/\\\*/g, '')
-          .trim();
+        extractedContent = sanitizeForPostgres(
+          rtfText
+            .replace(/\\\\[a-z]+\b[0-9-]*/gi, '')
+            .replace(/[{}]/g, '')
+            .replace(/\\\*/g, '')
+            .trim()
+        );
         break;
 
       default:

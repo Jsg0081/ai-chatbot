@@ -1,3 +1,5 @@
+import { sanitizeForPostgres } from './utils';
+
 export async function extractTextFromPDF(url: string): Promise<string> {
   try {
     console.log('Extracting text from PDF:', url);
@@ -19,7 +21,8 @@ export async function extractTextFromPDF(url: string): Promise<string> {
       textLength: data.text.length,
     });
     
-    return data.text;
+    // Sanitize the extracted text to remove null bytes and control characters
+    return sanitizeForPostgres(data.text);
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
     throw error;

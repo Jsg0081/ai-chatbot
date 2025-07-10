@@ -42,4 +42,9 @@ export const chatModels: Array<ChatModel> = [
     name: 'claude-3.7-sonnet',
     description: 'Fast, intelligent, and cost-effective',
   },
+  {
+    id: 'grok-4-0709',
+    name: 'Grok 4',
+    description: 'Advanced Grok model for enhanced reasoning and Bible study',
+  },
 ];

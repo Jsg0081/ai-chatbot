@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { knowledgeStore } from '@/lib/db/schema';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
+import { sanitizeForPostgres } from '@/lib/utils';
 
 export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
@@ -107,12 +108,12 @@ export async function POST(request: Request): Promise<NextResponse> {
             switch (contentType) {
               case 'application/pdf':
                 const pdfData = await pdf(buffer);
-                extractedContent = pdfData.text;
+                extractedContent = sanitizeForPostgres(pdfData.text);
                 break;
 
               case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                 const docxResult = await mammoth.extractRawText({ buffer });
-                extractedContent = docxResult.value;
+                extractedContent = sanitizeForPostgres(docxResult.value);
                 break;
 
               case 'text/plain':
@@ -120,16 +121,18 @@ export async function POST(request: Request): Promise<NextResponse> {
               case 'text/csv':
               case 'text/markdown':
               case 'text/html':
-                extractedContent = new TextDecoder().decode(buffer);
+                extractedContent = sanitizeForPostgres(new TextDecoder().decode(buffer));
                 break;
 
               case 'application/rtf':
                 const rtfText = new TextDecoder().decode(buffer);
-                extractedContent = rtfText
-                  .replace(/\\\\[a-z]+\b[0-9-]*/gi, '')
-                  .replace(/[{}]/g, '')
-                  .replace(/\\\*/g, '')
-                  .trim();
+                extractedContent = sanitizeForPostgres(
+                  rtfText
+                    .replace(/\\\\[a-z]+\b[0-9-]*/gi, '')
+                    .replace(/[{}]/g, '')
+                    .replace(/\\\*/g, '')
+                    .trim()
+                );
                 break;
 
               default:

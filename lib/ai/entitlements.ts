@@ -19,7 +19,8 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
       'gpt-4.1-2025-04-14',
       'o3-2025-04-16',
       'claude-4-sonnet',
-      'claude-3.7-sonnet'
+      'claude-3.7-sonnet',
+      'grok-4-0709'
     ],
   },
 
@@ -35,7 +36,8 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
       'gpt-4.1-2025-04-14',
       'o3-2025-04-16',
       'claude-4-sonnet',
-      'claude-3.7-sonnet'
+      'claude-3.7-sonnet',
+      'grok-4-0709'
     ],
   },
 

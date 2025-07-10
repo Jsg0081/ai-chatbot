@@ -132,3 +132,24 @@ export function truncateVerseReferences(text: string): { displayText: string; ha
   
   return { displayText, hasVerses: true };
 }
+
+export function getMissingKeys() {
+  const missingKeys: string[] = [];
+
+  if (!process.env.OPENAI_API_KEY) {
+    missingKeys.push('OPENAI_API_KEY');
+  }
+
+  return missingKeys;
+}
+
+export function sanitizeForPostgres(text: string): string {
+  if (!text) return '';
+  
+  // Remove null bytes (0x00) which PostgreSQL cannot store in text columns
+  // Also remove other problematic control characters
+  return text
+    .replace(/\x00/g, '') // Remove null bytes
+    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove other control chars except \t, \n, \r
+    .trim();
+}

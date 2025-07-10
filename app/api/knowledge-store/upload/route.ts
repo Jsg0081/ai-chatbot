@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { z } from 'zod';
+import { sanitizeForPostgres } from '@/lib/utils';
 
 // Configure route segment to handle large file uploads
 export const runtime = 'nodejs';
@@ -39,28 +40,30 @@ async function extractTextFromFile(file: Blob, filename: string): Promise<string
     switch (mimeType) {
       case 'application/pdf':
         const pdfData = await pdf(buffer);
-        return pdfData.text;
+        return sanitizeForPostgres(pdfData.text);
 
       case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         const docxResult = await mammoth.extractRawText({ buffer });
-        return docxResult.value;
+        return sanitizeForPostgres(docxResult.value);
 
       case 'text/plain':
       case 'text/rtf':
       case 'text/csv':
       case 'text/markdown':
       case 'text/html':
-        return new TextDecoder().decode(buffer);
+        return sanitizeForPostgres(new TextDecoder().decode(buffer));
 
       case 'application/rtf':
         // For RTF, we'll do basic extraction (remove RTF control codes)
         const rtfText = new TextDecoder().decode(buffer);
         // Basic RTF stripping - removes most control words and groups
-        return rtfText
-          .replace(/\\\\[a-z]+\b[0-9-]*/gi, '') // Remove control words
-          .replace(/[{}]/g, '') // Remove braces
-          .replace(/\\\*/g, '') // Remove special chars
-          .trim();
+        return sanitizeForPostgres(
+          rtfText
+            .replace(/\\\\[a-z]+\b[0-9-]*/gi, '') // Remove control words
+            .replace(/[{}]/g, '') // Remove braces
+            .replace(/\\\*/g, '') // Remove special chars
+            .trim()
+        );
 
       default:
         throw new Error(`Unsupported file type: ${mimeType}`);

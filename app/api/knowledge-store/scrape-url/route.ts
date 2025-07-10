@@ -3,7 +3,7 @@ import { auth } from '@/app/(auth)/auth';
 import { db } from '@/lib/db';
 import { knowledgeStore } from '@/lib/db/schema';
 import { WebScraper, formatScrapedContent, extractDomain } from '@/lib/web-scraper';
-import { generateUUID } from '@/lib/utils';
+import { generateUUID, sanitizeForPostgres } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Format the scraped content
-    const formattedContent = formatScrapedContent(scrapedPages);
+    const formattedContent = sanitizeForPostgres(formatScrapedContent(scrapedPages));
     const domain = extractDomain(url);
     const title = scrapedPages[0].title || domain;
 
